@@ -64,7 +64,9 @@ geometry until final art is supplied.
 
 ## Current status
 **Source-backed:** initial product spec, portable schemas/rules, server services/adapters, runtime
-placeholder pet, basic care/egg interactions, save schema, HUD, and demo-world builder are in the repo.
+placeholder pet, care/egg interactions, save schema, HUD, demo-world builder, and the initial
+King of the Couch queue/controller/round foundation are in the repo. The couch foundation includes
+server-owned intent validation, physical pet control, elimination, results, and Party Egg rewards.
 
 **Unverified:** Roblox Studio runtime. This still needs its first Studio play test.
 
