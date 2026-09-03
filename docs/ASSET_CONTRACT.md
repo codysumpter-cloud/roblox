@@ -35,7 +35,10 @@ clone/runtime properties. If an import is hundreds of studs wide, correct the FB
 scale before moving it to the canonical ServerStorage path. A current Studio inspection found a
 Pug at `Workspace.Pug` (not the canonical path), about 145 x 266 x 351 studs, with six Bones and
 an AnimationController but no Animator; that asset is not considered detected until it is moved,
-rescaled, and given an Animator or published animation setup.
+rescaled, and given an Animator or published animation setup. Studio also currently contains
+`ServerStorage/RBX_ANIMSAVES/Pug` with `Armature|Idle` and `Armature|Jump` KeyframeSequences.
+Those are editor-side animation sources, not runtime Animation asset IDs; Walk and Run are not
+present there yet.
 
 Uploaded Roblox animation IDs are intentionally kept in the Roblox-only
 `src/server/adapters/PetAnimationConfig.lua`. Supply IDs for `idle`, `walk`, `run`, and `jump`
