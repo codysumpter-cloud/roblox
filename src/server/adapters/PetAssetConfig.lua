@@ -5,9 +5,8 @@ return {
 	Pug = {
 		templateName = "Pug",
 		targetLargestDimension = 3.5,
-		-- The imported Quaternius FBX has material colors rather than image
-		-- textures. Studio flattened the original two-slot import to one MeshPart,
-		-- so the Studio-managed source has its warm beige base color restored.
-		appearance = "quaternius-fbx-material-color; no-external-texture",
+		-- Studio-managed source is the repaired uploaded Pug package.  This stays
+		-- outside Rojo so runtime cloning preserves its mesh, rig, and textures.
+		appearance = "uploaded-textured-pug-package",
 	},
 }

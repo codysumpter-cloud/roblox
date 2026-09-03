@@ -31,7 +31,7 @@ end
 
 local function findRoot(model: Model): BasePart?
 	if model.PrimaryPart then return model.PrimaryPart end
-	for _, name in { "HumanoidRootPart", "Root", "root", "Armature" } do
+	for _, name in { "HumanoidRootPart", "RootPart", "Root", "root", "Armature" } do
 		local candidate = model:FindFirstChild(name, true)
 		if candidate and candidate:IsA("BasePart") then return candidate end
 	end

@@ -17,12 +17,65 @@ local function makePart(parent, name, size, position, color, material)
 end
 
 local function prompt(part, actionText, objectText)
+	local existing = part:FindFirstChildOfClass("ProximityPrompt")
+	if existing then
+		existing.ActionText = actionText
+		existing.ObjectText = objectText
+		return existing
+	end
 	local value = Instance.new("ProximityPrompt")
 	value.ActionText = actionText
 	value.ObjectText = objectText
 	value.HoldDuration = 0.15
 	value.MaxActivationDistance = 10
 	value.Parent = part
+end
+
+local function activateCare(part: BasePart, action: string, label: string)
+	part:SetAttribute("CareAction", action)
+	prompt(part, string.upper(action), label)
+	CollectionService:AddTag(part, "PocketBuddyCareStation")
+	return part
+end
+
+local function activateHubIfPresent(): Folder?
+	local hub = workspace:FindFirstChild("PocketBuddyHub")
+	if not hub then return nil end
+
+	local food = hub:FindFirstChild("FoodPavilion")
+	local wash = hub:FindFirstChild("WashDeck")
+	local play = hub:FindFirstChild("PlayMat")
+	local pet = hub:FindFirstChild("PetDeck")
+	local hatch = hub:FindFirstChild("HatchNest")
+	local egg = hub:FindFirstChild("BackyardEgg")
+	local couch = hub:FindFirstChild("CouchSeat")
+	if not (food and wash and play and pet and hatch and egg and couch) then return nil end
+	if not (
+		food:IsA("BasePart")
+		and wash:IsA("BasePart")
+		and play:IsA("BasePart")
+		and pet:IsA("BasePart")
+		and hatch:IsA("BasePart")
+		and egg:IsA("BasePart")
+		and couch:IsA("BasePart")
+	) then
+		return nil
+	end
+
+	activateCare(food, "feed", "Food Bowl")
+	activateCare(wash, "wash", "Wash Tub")
+	activateCare(play, "play", "Toy Mat")
+	activateCare(pet, "pet", "Pet Spot")
+	prompt(hatch, "HATCH", "Egg Nest")
+	CollectionService:AddTag(hatch, "PocketBuddyHatchStation")
+	egg:SetAttribute("EggId", "Backyard")
+	egg:SetAttribute("WorldFlag", "found_backyard_egg_001")
+	prompt(egg, "TAKE", "Backyard Egg")
+	CollectionService:AddTag(egg, "PocketBuddyEggPickup")
+	prompt(couch, "JOIN / LEAVE", "King of the Couch")
+	couch:SetAttribute("FutureGameMode", "KingOfTheCouch")
+	CollectionService:AddTag(couch, "PocketBuddyPartyQueue")
+	return hub
 end
 
 local function careStation(parent, name, position, action, color)
@@ -53,6 +106,10 @@ end
 function DemoWorldBuilder.build()
 	local old = workspace:FindFirstChild("PocketBuddyDemoWorld")
 	if old then old:Destroy() end
+	-- The canonical authored place contains a visible hub.  Bind its real props
+	-- rather than layering temporary marker slabs on top of the artwork.
+	local authoredHub = activateHubIfPresent()
+	if authoredHub then return authoredHub end
 
 	local root = Instance.new("Folder")
 	root.Name = "PocketBuddyDemoWorld"
