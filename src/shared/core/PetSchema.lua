@@ -5,6 +5,8 @@ function PetSchema.new(id: string, seed: number, parts, traits)
 	return {
 		id = id,
 		name = "Buddy",
+		-- Logical runtime key only. Roblox adapters resolve this to a Studio asset.
+		runtimeTemplate = "Pug",
 		seed = seed,
 		parts = parts,
 		traits = traits,

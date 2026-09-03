@@ -66,6 +66,7 @@ function SaveSchema.sanitize(raw, fallback)
 			local pet = {
 				id = rawId,
 				name = type(rawPet.name) == "string" and string.sub(rawPet.name, 1, 32) or "Buddy",
+				runtimeTemplate = type(rawPet.runtimeTemplate) == "string" and string.sub(rawPet.runtimeTemplate, 1, 64) or "Pug",
 				seed = math.floor(tonumber(rawPet.seed) or 1),
 				parts = parts,
 				traits = TraitRules.fromParts(parts),

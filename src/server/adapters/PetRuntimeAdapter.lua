@@ -1,5 +1,7 @@
 --!strict
+local ServerStorage = game:GetService("ServerStorage")
 local PetRuntimeAdapter = {}
+local warnedMissing = {}
 
 local paletteColors = {
 	sky = Color3.fromRGB(106, 220, 245),
@@ -24,9 +26,27 @@ local function part(parent: Instance, name: string, size: Vector3, offset: CFram
 	return p
 end
 
+local function findRoot(model: Model): BasePart?
+	if model.PrimaryPart then return model.PrimaryPart end
+	for _, name in { "HumanoidRootPart", "Root", "root", "Armature" } do
+		local candidate = model:FindFirstChild(name, true)
+		if candidate and candidate:IsA("BasePart") then return candidate end
+	end
+	return model:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function templateFor(key: string): Model?
+	local assets = ServerStorage:FindFirstChild("PocketBuddyAssets")
+	local pets = assets and assets:FindFirstChild("Pets")
+	local candidate = pets and pets:FindFirstChild(key)
+	if candidate and candidate:IsA("Model") then return candidate end
+	return nil
+end
+
 function PetRuntimeAdapter.buildPlaceholder(pet): Model
 	local model = Instance.new("Model")
 	model.Name = "Pet_" .. pet.id
+	model:SetAttribute("GeneratedPlaceholder", true)
 	model:SetAttribute("PetId", pet.id)
 	local color = paletteColors[pet.parts.palette] or Color3.fromRGB(180, 210, 230)
 
@@ -62,15 +82,46 @@ function PetRuntimeAdapter.buildPlaceholder(pet): Model
 	return model
 end
 
+function PetRuntimeAdapter.build(pet): (Model, boolean)
+	local key = type(pet.runtimeTemplate) == "string" and pet.runtimeTemplate or "Pug"
+	local template = templateFor(key)
+	if template then
+		local model = template:Clone()
+		model.Name = "Pet_" .. pet.id
+		model:SetAttribute("PetId", pet.id)
+		model:SetAttribute("RuntimeTemplate", key)
+		local root = findRoot(model)
+		if root then model.PrimaryPart = root end
+		if root then return model, true end
+		model:Destroy()
+		if not warnedMissing[key] then
+			warnedMissing[key] = true
+			warn(("[PocketBuddy] runtime pet asset %s has no BasePart root; using generated placeholder"):format(key))
+		end
+	end
+	if not warnedMissing[key] then
+		warnedMissing[key] = true
+		warn(("[PocketBuddy] runtime pet asset missing at ServerStorage/PocketBuddyAssets/Pets/%s; using generated placeholder"):format(key))
+	end
+	local fallback = PetRuntimeAdapter.buildPlaceholder(pet)
+	fallback:SetAttribute("RuntimeTemplate", key)
+	return fallback, false
+end
+
 function PetRuntimeAdapter.prepare(model: Model)
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
+			-- Hub companions are presentation-only. Anchor only the resolved root on a
+			-- real rig so Motor6D/Bone animation remains free to pose other parts.
+			if model:GetAttribute("GeneratedPlaceholder") == true then descendant.Anchored = true end
 			descendant.CanCollide = false
 			descendant.CanTouch = false
 			descendant.CanQuery = false
 		end
 	end
+	local root = findRoot(model)
+	if root and model:GetAttribute("GeneratedPlaceholder") ~= true then root.Anchored = true end
+	if root then model.PrimaryPart = root end
 end
 
 function PetRuntimeAdapter.setPhysics(model: Model, enabled: boolean)
