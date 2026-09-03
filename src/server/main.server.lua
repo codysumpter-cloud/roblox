@@ -27,7 +27,11 @@ local function added(player: Player)
 
 	player.CharacterAdded:Connect(function()
 		task.wait(0.25)
-		PetService.refresh(player)
+		-- A party round owns the pet runtime. Avatar respawns must not replace the
+		-- physical party pet or return the player to hub-companion mode mid-round.
+		if not PartyService.isInParty(player) then
+			PetService.refresh(player)
+		end
 	end)
 end
 

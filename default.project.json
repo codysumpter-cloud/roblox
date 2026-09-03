@@ -2,7 +2,7 @@
   "name": "PocketBuddy",
   "tree": {
     "$className": "DataModel",
-    "ReplicatedStorage": {"PocketBuddy": {"Shared": {"$path": "src/shared"}}},
+    "ReplicatedStorage": {"PocketBuddy": {"$className": "Folder", "Shared": {"$path": "src/shared"}}},
     "ServerScriptService": {"PocketBuddyServer": {"$path": "src/server"}},
     "StarterPlayer": {"StarterPlayerScripts": {"PocketBuddyClient": {"$path": "src/client"}}}
   }
