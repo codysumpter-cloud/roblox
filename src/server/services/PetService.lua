@@ -104,17 +104,14 @@ RunService.Heartbeat:Connect(function(dt)
 				local look = rootPart.CFrame.LookVector
 				facing = Vector3.new(look.X, 0, look.Z)
 			end
-			local animationState = PetAnimationAdapter.stateForSpeed(distance / math.max(dt, 1 / 60), true)
 			local desired = CFrame.lookAt(desiredPosition, desiredPosition + facing)
-				* PetAnimationAdapter.presentationOffset(model, animationState)
 			if distance > 80 then
 				model:PivotTo(desired)
 			else
 				model:PivotTo(current:Lerp(desired, math.clamp(dt * 7, 0, 1)))
 			end
 			local speed = distance > 80 and 0 or distance / math.max(dt, 1 / 60)
-			animationState = PetAnimationAdapter.stateForSpeed(speed, true)
-			PetAnimationAdapter.setState(model, animationState, math.clamp(speed / 8, 0.8, 1.5))
+			PetAnimationAdapter.setState(model, PetAnimationAdapter.stateForSpeed(speed, true), math.clamp(speed / 8, 0.8, 1.5))
 		end
 	end
 end)

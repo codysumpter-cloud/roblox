@@ -7,14 +7,6 @@ local warnedMissing = false
 local warnedController: {[Model]: boolean} = {}
 local animationIds: {[string]: string} = PetAnimationConfig
 
--- Imported source rigs can contain bind poses without published Roblox
--- Animation assets.  The Pug falls into that category, so it receives a
--- presentation motion at the model pivot until its authored clips are
--- published.  This never edits the mesh, textures, or bones.
-local function isPug(model: Model): boolean
-	return model:GetAttribute("RuntimeTemplate") == "Pug"
-end
-
 local function getAnimator(model: Model): Animator?
 	local animator = model:FindFirstChildWhichIsA("Animator", true)
 	if animator then return animator end
@@ -93,23 +85,6 @@ function PetAnimationAdapter.stateForSpeed(speed: number, grounded: boolean): st
 	if speed >= 12 then return "run" end
 	if speed >= 1 then return "walk" end
 	return "idle"
-end
-
-function PetAnimationAdapter.presentationOffset(model: Model, state: string): CFrame
-	if not isPug(model) then return CFrame.identity end
-	local time = os.clock()
-	if state == "walk" or state == "run" then
-		local pace = state == "run" and 12 or 8
-		local bounce = math.abs(math.sin(time * pace)) * 0.16
-		local roll = math.sin(time * pace) * math.rad(4)
-		return CFrame.new(0, bounce, 0) * CFrame.Angles(roll, 0, 0)
-	end
-	if state == "jump" then
-		return CFrame.Angles(math.rad(-8), 0, 0)
-	end
-	local breathe = math.sin(time * 3.2) * 0.045
-	local curious = math.sin(time * 1.7) * math.rad(1.5)
-	return CFrame.new(0, breathe, 0) * CFrame.Angles(0, curious, 0)
 end
 
 function PetAnimationAdapter.clear(model: Model)
