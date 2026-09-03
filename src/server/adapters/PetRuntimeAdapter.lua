@@ -49,6 +49,16 @@ function PetRuntimeAdapter.buildPlaceholder(pet): Model
 
 	local tailLength = pet.parts.tail == "otter" and 1.6 or pet.parts.tail == "raccoon" and 1.35 or 0.9
 	part(model, "Tail", Vector3.new(0.28, 0.28, tailLength), CFrame.new(0, -0.1, 1.28 + tailLength / 2), color)
+	-- Keep the generated assembly together when a party mode enables physics. The
+	-- welds do not make hub companions physical; prepare() still anchors them.
+	for _, descendant in model:GetChildren() do
+		if descendant:IsA("BasePart") and descendant ~= root then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = descendant
+			weld.Parent = root
+		end
+	end
 	return model
 end
 
@@ -59,6 +69,21 @@ function PetRuntimeAdapter.prepare(model: Model)
 			descendant.CanCollide = false
 			descendant.CanTouch = false
 			descendant.CanQuery = false
+		end
+	end
+end
+
+function PetRuntimeAdapter.setPhysics(model: Model, enabled: boolean)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = not enabled
+			descendant.CanCollide = enabled and descendant.Name ~= "Root"
+			descendant.CanTouch = enabled
+			descendant.CanQuery = enabled
+			if enabled then
+				-- Server ownership makes impulses and elimination decisions authoritative.
+				pcall(function() descendant:SetNetworkOwner(nil) end)
+			end
 		end
 	end
 end

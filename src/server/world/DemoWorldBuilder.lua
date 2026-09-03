@@ -69,6 +69,8 @@ function DemoWorldBuilder.build()
 
 	local couch = makePart(root, "KingOfTheCouch", Vector3.new(20, 3, 8), Vector3.new(0, 1.5, -28), Color3.fromRGB(127, 94, 171))
 	makePart(root, "CouchBack", Vector3.new(20, 6, 2), Vector3.new(0, 4, -31), Color3.fromRGB(111, 80, 153))
+	prompt(couch, "JOIN / LEAVE", "King of the Couch")
+	CollectionService:AddTag(couch, "PocketBuddyPartyQueue")
 	couch:SetAttribute("FutureGameMode", "KingOfTheCouch")
 
 	return root

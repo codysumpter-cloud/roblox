@@ -9,6 +9,8 @@ local PlayerProfileService = require(script.Parent.services.PlayerProfileService
 local PetService = require(script.Parent.services.PetService)
 local CareService = require(script.Parent.services.CareService)
 local EggService = require(script.Parent.services.EggService)
+local PartyService = require(script.Parent.services.PartyService)
+local RemoteService = require(script.Parent.services.RemoteService)
 local DemoWorldBuilder = require(script.Parent.world.DemoWorldBuilder)
 
 if Config.BuildDemoWorld then
@@ -17,6 +19,7 @@ end
 
 CareService.bind()
 EggService.bind()
+PartyService.bind()
 
 local function added(player: Player)
 	PlayerProfileService.load(player)
@@ -32,6 +35,7 @@ local function removing(player: Player)
 	PlayerProfileService.save(player)
 	PetService.remove(player)
 	PlayerProfileService.remove(player)
+	RemoteService.clearPlayer(player)
 end
 
 Players.PlayerAdded:Connect(added)

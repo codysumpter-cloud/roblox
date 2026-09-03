@@ -2,11 +2,15 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("PocketBuddyRemotes")
 local ProfileUpdated = remotes:WaitForChild("ProfileUpdated") :: RemoteEvent
 local Notify = remotes:WaitForChild("Notify") :: RemoteEvent
+local Intent = remotes:WaitForChild("Intent") :: RemoteEvent
+local RoundUpdated = remotes:WaitForChild("RoundUpdated") :: RemoteEvent
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "PocketBuddyHUD"
@@ -67,7 +71,87 @@ local toastCorner = Instance.new("UICorner")
 toastCorner.CornerRadius = UDim.new(0, 10)
 toastCorner.Parent = toast
 
+local roundLabel = Instance.new("TextLabel")
+roundLabel.AnchorPoint = Vector2.new(0.5, 0)
+roundLabel.Position = UDim2.new(0.5, 0, 0, 70)
+roundLabel.Size = UDim2.fromOffset(420, 34)
+roundLabel.BackgroundTransparency = 1
+roundLabel.Font = Enum.Font.GothamBold
+roundLabel.TextColor3 = Color3.fromRGB(255, 240, 174)
+roundLabel.TextSize = 18
+roundLabel.Visible = false
+roundLabel.Parent = gui
+
+local partyActive = false
+local held = {}
+local lastMoveSent = 0
+local keyActions = {
+	[Enum.KeyCode.Space] = "jump",
+	[Enum.KeyCode.F] = "grab",
+	[Enum.KeyCode.E] = "shove",
+	[Enum.KeyCode.Q] = "throw",
+	[Enum.KeyCode.R] = "flop",
+	[Enum.KeyCode.T] = "get_up",
+}
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or not partyActive then return end
+	local action = keyActions[input.KeyCode]
+	if action then Intent:FireServer({ action = action }) end
+	if input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.S or input.KeyCode == Enum.KeyCode.D then
+		held[input.KeyCode] = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	held[input.KeyCode] = nil
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not partyActive then return end
+	if os.clock() - lastMoveSent < (1 / 15) then return end
+	lastMoveSent = os.clock()
+	local vector = Vector3.zero
+	if held[Enum.KeyCode.W] then vector += Vector3.new(0, 0, -1) end
+	if held[Enum.KeyCode.S] then vector += Vector3.new(0, 0, 1) end
+	if held[Enum.KeyCode.A] then vector += Vector3.new(-1, 0, 0) end
+	if held[Enum.KeyCode.D] then vector += Vector3.new(1, 0, 0) end
+	if vector.Magnitude > 1 then vector = vector.Unit end
+	Intent:FireServer({ action = "move", vector = vector })
+end)
+
+RoundUpdated.OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" then return end
+	local players = payload.players
+	local included = false
+	if type(players) == "table" then
+		for _, userId in players do if userId == player.UserId then included = true break end end
+	end
+	partyActive = included and (payload.phase == "Playing" or payload.phase == "Countdown")
+	if partyActive then
+		task.defer(function()
+			local model = workspace:FindFirstChild(player.Name .. "_PartyBuddy")
+			local root = model and model:FindFirstChild("Root")
+			if root and root:IsA("BasePart") then
+				workspace.CurrentCamera.CameraSubject = root
+			end
+		end)
+	elseif payload.phase == "Idle" then
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then workspace.CurrentCamera.CameraSubject = humanoid end
+	end
+	roundLabel.Visible = included
+	if included then
+		local phase = tostring(payload.phase or "")
+		local seconds = payload.secondsLeft and (" · " .. tostring(math.ceil(payload.secondsLeft)) .. "s") or ""
+		roundLabel.Text = string.upper(phase) .. seconds .. "  |  WASD move · Space jump · F grab · E shove · Q throw · R flop · T get up"
+	end
+	if payload.phase == "Idle" then roundLabel.Visible = false end
+end)
+
 ProfileUpdated.OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" or type(payload.eggs) ~= "table" then return end
 	local pet = payload.activePet
 	if type(pet) ~= "table" then return end
 	title.Text = string.upper(pet.name or "BUDDY")
