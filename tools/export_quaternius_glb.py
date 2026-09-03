@@ -53,14 +53,37 @@ def normalize_materials() -> list[dict[str, object]]:
         nodes.clear()
         output = nodes.new("ShaderNodeOutputMaterial")
         principled = nodes.new("ShaderNodeBsdfPrincipled")
-        principled.inputs["Base Color"].default_value = material.diffuse_color
+        # Roblox's GLB importer currently drops baseColorFactor-only colors for
+        # these models. Embed a tiny real texture so the color survives upload.
+        image = bpy.data.images.new(
+            name=f"PB_{material.name}_Color",
+            width=4,
+            height=4,
+            alpha=True,
+        )
+        image.generated_color = tuple(material.diffuse_color)
+        image.pack()
+        texture = nodes.new("ShaderNodeTexImage")
+        texture.image = image
+        texture.interpolation = "Closest"
+        material.node_tree.links.new(texture.outputs["Color"], principled.inputs["Base Color"])
+        material.node_tree.links.new(texture.outputs["Alpha"], principled.inputs["Alpha"])
         principled.inputs["Roughness"].default_value = 0.8
         material.node_tree.links.new(principled.outputs["BSDF"], output.inputs["Surface"])
-        result.append({"name": material.name, "rgba": rgba})
+        result.append({"name": material.name, "rgba": rgba, "embedded_texture": image.name})
     return result
 
 
+def ensure_uv_layers() -> None:
+    """Give texture-only flat colors a valid coordinate on every mesh."""
+    for mesh in bpy.data.meshes:
+        uv_layer = mesh.uv_layers.active or mesh.uv_layers.new(name="PocketBuddyColorUV")
+        for loop_uv in uv_layer.data:
+            loop_uv.uv = (0.5, 0.5)
+
+
 def scene_manifest(source: Path, destination: Path, pack: str) -> dict[str, object]:
+    ensure_uv_layers()
     objects = []
     armatures = []
     for obj in bpy.context.scene.objects:
@@ -107,9 +130,15 @@ def export_one(source: Path, destination: Path, pack: str) -> dict[str, object]:
 
 def main() -> None:
     root = output_root()
+    selected_pack = os.environ.get("POCKET_BUDDY_EXPORT_PACK", "").casefold()
+    selected_asset = os.environ.get("POCKET_BUDDY_EXPORT_ASSET", "").casefold()
     records: list[dict[str, object]] = []
     for pack, source_dir in PACKS.items():
+        if selected_pack and pack.casefold() != selected_pack:
+            continue
         for source in sorted(source_dir.glob("*.blend"), key=lambda path: path.name.casefold()):
+            if selected_asset and source.stem.casefold() != selected_asset:
+                continue
             destination = root / pack / f"{source.stem}.glb"
             try:
                 record = export_one(source, destination, pack)

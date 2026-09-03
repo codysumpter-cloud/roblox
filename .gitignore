@@ -7,3 +7,5 @@ sourcemap.json
 /build/
 /dist/
 /work/
+__pycache__/
+*.pyc
