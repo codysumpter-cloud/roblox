@@ -33,11 +33,20 @@ local function careStation(parent, name, position, action, color)
 	return p
 end
 
-local function authoredSpawnPosition(): Vector3
-	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation")
-	if spawn then
-		return spawn.Position
+local function authoredSpawn(): SpawnLocation?
+	local direct = workspace:FindFirstChildWhichIsA("SpawnLocation")
+	if direct then return direct end
+	for _, descendant in workspace:GetDescendants() do
+		if descendant:IsA("SpawnLocation") then
+			return descendant
+		end
 	end
+	return nil
+end
+
+local function authoredSpawnPosition(): Vector3
+	local spawn = authoredSpawn()
+	if spawn then return spawn.Position end
 	return Vector3.new(0, 0.5, 18)
 end
 
@@ -54,7 +63,7 @@ function DemoWorldBuilder.build()
 	local spawnPosition = authoredSpawnPosition()
 	local groundY = spawnPosition.Y + 0.5
 
-	if not workspace:FindFirstChildWhichIsA("SpawnLocation") then
+	if not authoredSpawn() then
 		local spawn = Instance.new("SpawnLocation")
 		spawn.Name = "Spawn"
 		spawn.Size = Vector3.new(8, 1, 8)
