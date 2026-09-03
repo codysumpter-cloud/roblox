@@ -67,6 +67,10 @@ local function inRound(player: Player): boolean
 	return false
 end
 
+-- Exposed for lifecycle coordination in main.server.lua. Character respawns
+-- during a round must not replace the server-owned party pet with a hub pet.
+PartyService.isInParty = inRound
+
 local function removeFromQueue(player: Player)
 	if not queueSet[player.UserId] then return end
 	queueSet[player.UserId] = nil
