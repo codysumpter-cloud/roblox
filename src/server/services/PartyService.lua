@@ -25,9 +25,18 @@ local roundToken = 0
 local lastIntent = {}
 local startedAt = 0
 local COUCH_CENTER = Vector3.new(0, 4.8, -28)
+local roundCouchCenter = COUCH_CENTER
 local COUCH_HALF_X = 9.5
-local COUCH_MIN_Z = -32.0
-local COUCH_MAX_Z = -24.0
+local COUCH_HALF_Z = 4.0
+
+local function findCouchCenter(): Vector3
+	for _, instance in CollectionService:GetTagged("PocketBuddyPartyQueue") do
+		if instance:IsA("BasePart") then
+			return instance.Position + Vector3.new(0, instance.Size.Y / 2 + 1.3, 0)
+		end
+	end
+	return COUCH_CENTER
+end
 
 local function notify(player: Player, message: string)
 	RemoteService.Notify:FireClient(player, message)
@@ -78,10 +87,10 @@ local function finishRound(token: number)
 				if not rewarded then
 					profile.eggs.Party = (profile.eggs.Party or 0) + 1
 					rewarded = true
-					PetService.pushProfile(player)
 					notify(player, "You won! Party Egg earned.")
 				end
 			end
+			PetService.pushProfile(player)
 		end
 	end
 	publish( mode.resultsSeconds )
@@ -244,12 +253,13 @@ local function startRound()
 	if token ~= roundToken then return end
 	state.phase = RoundRules.Phase.Playing
 	startedAt = os.clock()
+	roundCouchCenter = findCouchCenter()
 	local slot = 0
 	for _, userId in state.players do
 		local player = Players:GetPlayerByUserId(userId)
 		if player and PlayerProfileService.get(player) and AvatarAdapter.enterParty(player) then
 			slot += 1
-			PetService.enterParty(player, COUCH_CENTER + Vector3.new((slot - 1) * 2 - 4, 0, 0))
+			PetService.enterParty(player, roundCouchCenter + Vector3.new((slot - 1) * 2 - 4, 0, 0))
 		else
 			eliminate(userId)
 		end
@@ -304,7 +314,10 @@ RunService.Heartbeat:Connect(function()
 			local player = Players:GetPlayerByUserId(userId)
 			local model = player and PetService.runtimeModel(player)
 			local root = model and model.PrimaryPart
-			if not player or not root or not root:IsA("BasePart") or root.Position.Y < 1.0 or root.Position.X < -COUCH_HALF_X or root.Position.X > COUCH_HALF_X or root.Position.Z < COUCH_MIN_Z or root.Position.Z > COUCH_MAX_Z then
+			if not player or not root or not root:IsA("BasePart")
+				or root.Position.Y < roundCouchCenter.Y - 3.8
+				or math.abs(root.Position.X - roundCouchCenter.X) > COUCH_HALF_X
+				or math.abs(root.Position.Z - roundCouchCenter.Z) > COUCH_HALF_Z then
 				eliminate(userId)
 			elseif model:GetAttribute("Flopped") ~= true then
 				local input = inputs[player] or Vector3.zero
