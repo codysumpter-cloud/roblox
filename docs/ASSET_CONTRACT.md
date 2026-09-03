@@ -44,3 +44,11 @@ Uploaded Roblox animation IDs are intentionally kept in the Roblox-only
 `src/server/adapters/PetAnimationConfig.lua`. Supply IDs for `idle`, `walk`, `run`, and `jump`
 after publishing the imported actions. Missing IDs are non-fatal: the pet still spawns and follows
 without animation. `Death` is not used for normal gameplay.
+
+The canonical connected development place is currently Studio B (`PlaceId 130948128859629`),
+because it contains the authored grass/map foundation and is published for private testing. Its
+binary assets are Studio-managed; code remains Rojo-managed. The imported Pug, Cow, Zebra, and
+human animation-preview rigs were moved out of Workspace into ServerStorage source/unused buckets
+until they are individually normalized and approved. `PetAssetConfig.lua` holds Roblox-only target
+dimensions and appearance metadata; a valid Pug clone is normalized to a 3.5-stud largest
+dimension at runtime.

@@ -1,7 +1,10 @@
 --!strict
 local ServerStorage = game:GetService("ServerStorage")
+local PetAssetConfig = require(script.Parent.PetAssetConfig)
+local PetAnimationConfig = require(script.Parent.PetAnimationConfig)
 local PetRuntimeAdapter = {}
 local warnedMissing = {}
+local diagnosticsEmitted = {}
 
 local paletteColors = {
 	sky = Color3.fromRGB(106, 220, 245),
@@ -38,9 +41,52 @@ end
 local function templateFor(key: string): Model?
 	local assets = ServerStorage:FindFirstChild("PocketBuddyAssets")
 	local pets = assets and assets:FindFirstChild("Pets")
-	local candidate = pets and pets:FindFirstChild(key)
+	local config = PetAssetConfig[key]
+	local templateName = config and config.templateName or key
+	local candidate = pets and pets:FindFirstChild(templateName)
 	if candidate and candidate:IsA("Model") then return candidate end
 	return nil
+end
+
+local function boundsText(size: Vector3): string
+	return ("%.2f,%.2f,%.2f"):format(size.X, size.Y, size.Z)
+end
+
+local function normalize(model: Model, key: string): (Vector3, Vector3, number)
+	local _, sourceSize = model:GetBoundingBox()
+	local config = PetAssetConfig[key]
+	local target = config and config.targetLargestDimension
+	local largest = math.max(sourceSize.X, sourceSize.Y, sourceSize.Z)
+	local scale = 1
+	if target and target > 0 and largest > 0 then
+		scale = target / largest
+		if math.abs(scale - 1) > 0.01 then
+			local ok = pcall(function() model:ScaleTo(scale) end)
+			if not ok then
+				warn(("[PocketBuddy] could not normalize %s model scale; using source dimensions"):format(key))
+				scale = 1
+			end
+		end
+	end
+	local _, runtimeSize = model:GetBoundingBox()
+	return sourceSize, runtimeSize, scale
+end
+
+local function emitDiagnostics(key: string, found: boolean, sourceSize: Vector3, runtimeSize: Vector3, scale: number)
+	if diagnosticsEmitted[key] then return end
+	diagnosticsEmitted[key] = true
+	local config = PetAssetConfig[key]
+	local appearance = config and config.appearance or "generated-placeholder"
+	print(("[PocketBuddy] template=%s"):format(key))
+	print(("[PocketBuddy] assetFound=%s"):format(tostring(found)))
+	print(("[PocketBuddy] sourceBounds=%s"):format(boundsText(sourceSize)))
+	print(("[PocketBuddy] runtimeBounds=%s"):format(boundsText(runtimeSize)))
+	print(("[PocketBuddy] scale=%.6f"):format(scale))
+	print(("[PocketBuddy] appearance=%s"):format(appearance))
+	for _, state in { "idle", "walk", "run", "jump" } do
+		local value = PetAnimationConfig[state]
+		print(("[PocketBuddy] animation %s=%s"):format(state, tostring(type(value) == "string" and value ~= "")))
+	end
 end
 
 function PetRuntimeAdapter.buildPlaceholder(pet): Model
@@ -92,7 +138,11 @@ function PetRuntimeAdapter.build(pet): (Model, boolean)
 		model:SetAttribute("RuntimeTemplate", key)
 		local root = findRoot(model)
 		if root then model.PrimaryPart = root end
-		if root then return model, true end
+		if root then
+			local sourceSize, runtimeSize, scale = normalize(model, key)
+			emitDiagnostics(key, true, sourceSize, runtimeSize, scale)
+			return model, true
+		end
 		model:Destroy()
 		if not warnedMissing[key] then
 			warnedMissing[key] = true
@@ -105,6 +155,8 @@ function PetRuntimeAdapter.build(pet): (Model, boolean)
 	end
 	local fallback = PetRuntimeAdapter.buildPlaceholder(pet)
 	fallback:SetAttribute("RuntimeTemplate", key)
+	local _, fallbackSize = fallback:GetBoundingBox()
+	emitDiagnostics(key, false, fallbackSize, fallbackSize, 1)
 	return fallback, false
 end
 
