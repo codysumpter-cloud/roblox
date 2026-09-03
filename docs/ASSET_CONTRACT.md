@@ -32,11 +32,11 @@ once and uses the generated placeholder so a fresh Baseplate still boots.
 The imported Pug must be a reasonably scaled Model with a valid root/pivot and its rig under the
 Model. Keep the source mesh/materials and animation rig intact; the runtime adapter only changes
 clone/runtime properties. If an import is hundreds of studs wide, correct the FBX/Studio import
-scale before moving it to the canonical ServerStorage path. A current Studio inspection found a
-Pug at `Workspace.Pug` (not the canonical path), about 145 x 266 x 351 studs, with six Bones and
-an AnimationController but no Animator; that asset is not considered detected until it is moved,
-rescaled, and given an Animator or published animation setup. Studio also currently contains
-`ServerStorage/RBX_ANIMSAVES/Pug` with `Armature|Idle` and `Armature|Jump` KeyframeSequences.
+scale before treating it as final art. The Studio B inspection found the Pug at about 145 x 266 x
+351 studs, with six Bones and an AnimationController but no Animator; it is now organized at the
+canonical path and clone-time normalization protects runtime scale. Studio also contains
+`ServerStorage/PocketBuddyAssets/Animations/RBX_ANIMSAVES/Pug` with `Armature|Idle` and
+`Armature|Jump` KeyframeSequences.
 Those are editor-side animation sources, not runtime Animation asset IDs; Walk and Run are not
 present there yet.
 
