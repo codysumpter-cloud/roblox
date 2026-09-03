@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("PocketBuddyRemotes")
 local ProfileUpdated = remotes:WaitForChild("ProfileUpdated") :: RemoteEvent
+local ProfileRequest = remotes:WaitForChild("ProfileRequest") :: RemoteEvent
 local Notify = remotes:WaitForChild("Notify") :: RemoteEvent
 local Intent = remotes:WaitForChild("Intent") :: RemoteEvent
 local RoundUpdated = remotes:WaitForChild("RoundUpdated") :: RemoteEvent
@@ -180,5 +181,9 @@ Notify.OnClientEvent:Connect(function(message)
 		}):Play()
 	end)
 end)
+
+-- Request the current snapshot after listeners are installed so a fast profile load
+-- cannot leave a newly-created HUD showing "Waiting for pet...".
+ProfileRequest:FireServer()
 
 print("[PocketBuddy] client scaffold started")

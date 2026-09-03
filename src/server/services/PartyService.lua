@@ -38,6 +38,10 @@ local function findCouchCenter(): Vector3
 	return COUCH_CENTER
 end
 
+local function isGrounded(root: BasePart): boolean
+	return math.abs(root.Position.Y - roundCouchCenter.Y) <= 1.0
+end
+
 local function notify(player: Player, message: string)
 	RemoteService.Notify:FireClient(player, message)
 end
@@ -225,11 +229,24 @@ local function processIntent(player: Player, payload)
 		local model = PetService.runtimeModel(player)
 		if model then
 			model:SetAttribute("Flopped", true)
+			local pivot = model:GetPivot()
+			model:PivotTo(pivot * CFrame.Angles(math.rad(72), 0, math.rad(-12)))
+			local root = model.PrimaryPart
+			if root then root.AssemblyAngularVelocity = Vector3.new(0, 0, 3) end
 			task.delay(0.9, function() if model.Parent then model:SetAttribute("Flopped", false) end end)
 		end
 	elseif action == "get_up" then
 		local model = PetService.runtimeModel(player)
-		if model then model:SetAttribute("Flopped", false) end
+		if model then
+			local pivot = model:GetPivot()
+			local look = pivot.LookVector
+			local flatLook = Vector3.new(look.X, 0, look.Z)
+			if flatLook.Magnitude < 0.1 then flatLook = Vector3.new(0, 0, -1) end
+			model:PivotTo(CFrame.lookAt(pivot.Position, pivot.Position + flatLook.Unit))
+			local root = model.PrimaryPart
+			if root then root.AssemblyAngularVelocity = Vector3.zero end
+			model:SetAttribute("Flopped", false)
+		end
 	end
 end
 
@@ -325,7 +342,7 @@ RunService.Heartbeat:Connect(function()
 				local speed = 14 * (traits.speed or 1)
 				local velocity = root.AssemblyLinearVelocity
 				root.AssemblyLinearVelocity = Vector3.new(input.X * speed, velocity.Y, input.Z * speed)
-				if lastIntent[player] == "jump" and velocity.Y <= 1 then
+				if lastIntent[player] == "jump" and velocity.Y <= 1 and isGrounded(root) then
 					root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, 32 * (traits.jump or 1), root.AssemblyLinearVelocity.Z)
 				end
 				lastIntent[player] = nil

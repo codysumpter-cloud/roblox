@@ -16,6 +16,7 @@ local function remote(name: string): RemoteEvent
 end
 
 RemoteService.ProfileUpdated = remote("ProfileUpdated")
+RemoteService.ProfileRequest = remote("ProfileRequest")
 RemoteService.Notify = remote("Notify")
 -- Clients send intents, never authoritative state. Party/controller services validate
 -- the action, current phase, ownership, proximity, and this per-player cooldown.

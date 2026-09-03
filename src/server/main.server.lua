@@ -21,6 +21,13 @@ CareService.bind()
 EggService.bind()
 PartyService.bind()
 
+RemoteService.ProfileRequest.OnServerEvent:Connect(function(player)
+	if RemoteService.rateLimit(player, "profile_request", 1) then return end
+	if PlayerProfileService.get(player) then
+		PetService.pushProfile(player)
+	end
+end)
+
 local function added(player: Player)
 	PlayerProfileService.load(player)
 	PetService.spawnActive(player)

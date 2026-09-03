@@ -1,5 +1,6 @@
 --!strict
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local Config = require(game.ReplicatedStorage.PocketBuddy.Shared.core.Config)
 local NeedsRules = require(game.ReplicatedStorage.PocketBuddy.Shared.core.NeedsRules)
 local SaveSchema = require(game.ReplicatedStorage.PocketBuddy.Shared.core.SaveSchema)
@@ -39,6 +40,11 @@ local function use(player: Player, station: Instance)
 	if not pet then return end
 
 	if NeedsRules.apply(pet, action) then
+		if action == "play" and not profile.worldFlags.play_egg_earned_001 then
+			profile.worldFlags.play_egg_earned_001 = true
+			profile.eggs.Play = (profile.eggs.Play or 0) + 1
+			RemoteService.Notify:FireClient(player, "Play Egg earned!")
+		end
 		PetService.pushProfile(player)
 		RemoteService.Notify:FireClient(player, ("Buddy enjoyed %s!"):format(action))
 	end
@@ -53,6 +59,12 @@ function CareService.bind()
 			end)
 		end
 	end
+	Players.PlayerRemoving:Connect(function(player)
+		local prefix = tostring(player.UserId) .. ":"
+		for key in lastUse do
+			if string.sub(key, 1, #prefix) == prefix then lastUse[key] = nil end
+		end
+	end)
 end
 
 return CareService

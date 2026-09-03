@@ -1,5 +1,6 @@
 --!strict
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local Config = require(game.ReplicatedStorage.PocketBuddy.Shared.core.Config)
 local HatchRules = require(game.ReplicatedStorage.PocketBuddy.Shared.core.HatchRules)
 local PlayerProfileService = require(script.Parent.PlayerProfileService)
@@ -103,6 +104,13 @@ function EggService.bind()
 			end)
 		end
 	end
+	Players.PlayerRemoving:Connect(function(player)
+		local prefix = tostring(player.UserId) .. ":"
+		for key in lastAction do
+			if string.sub(key, 1, #prefix) == prefix then lastAction[key] = nil end
+		end
+		hatchNonce[player] = nil
+	end)
 end
 
 return EggService
