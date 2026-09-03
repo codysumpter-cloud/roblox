@@ -55,18 +55,22 @@ src/client/             HUD/input/presentation
 1. Install Rojo.
 2. Clone this repository.
 3. Run `rojo serve`.
-4. Open a fresh Roblox Studio **Baseplate**.
+4. Open the canonical published Pocket Buddy place (Studio B, PlaceId `130948128859629`)
+   or a fresh Baseplate for a fallback smoke test.
 5. Connect the Rojo Studio plugin.
 6. Sync, then press Play.
 
-The current scaffold builds a primitive backyard test world at runtime and uses generated placeholder
-geometry until final art is supplied.
+The runtime builder layers care, egg, hatch, and couch gameplay objects onto the authored world; it
+does not replace Terrain or grass. The first runtime template is `Pug`, resolved from the
+Studio-managed `ServerStorage/PocketBuddyAssets/Pets/Pug` path and normalized at clone time. A
+missing template safely falls back to generated placeholder geometry.
 
 ## Current status
-**Source-backed:** initial product spec, portable schemas/rules, server services/adapters, runtime
-placeholder pet, care/egg interactions, save schema, HUD, demo-world builder, and the initial
-King of the Couch queue/controller/round foundation are in the repo. The couch foundation includes
-server-owned intent validation, physical pet control, elimination, results, and Party Egg rewards.
+**Source-backed:** initial product spec, portable schemas/rules, server services/adapters, Pug runtime
+asset adapter, care/egg interactions, save schema, HUD, authored-world-safe gameplay builder, and the
+initial King of the Couch queue/controller/round foundation are in the repo. The couch foundation
+includes server-owned intent validation, physical pet control, elimination, results, and Party Egg
+rewards.
 
 **Unverified:** Roblox Studio runtime. This still needs its first Studio play test.
 
