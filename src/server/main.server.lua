@@ -31,6 +31,13 @@ end)
 local function added(player: Player)
 	PlayerProfileService.load(player)
 	PetService.spawnActive(player)
+	-- The client also requests a snapshot, but this delayed server push covers the
+	-- case where that request arrives while profile loading is still yielding.
+	task.delay(1, function()
+		if player.Parent and PlayerProfileService.get(player) then
+			PetService.pushProfile(player)
+		end
+	end)
 
 	player.CharacterAdded:Connect(function()
 		task.wait(0.25)
