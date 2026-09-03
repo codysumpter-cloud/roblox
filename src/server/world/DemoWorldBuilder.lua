@@ -33,6 +33,14 @@ local function careStation(parent, name, position, action, color)
 	return p
 end
 
+local function authoredSpawnPosition(): Vector3
+	local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation")
+	if spawn then
+		return spawn.Position
+	end
+	return Vector3.new(0, 0.5, 18)
+end
+
 function DemoWorldBuilder.build()
 	local old = workspace:FindFirstChild("PocketBuddyDemoWorld")
 	if old then old:Destroy() end
@@ -41,34 +49,39 @@ function DemoWorldBuilder.build()
 	root.Name = "PocketBuddyDemoWorld"
 	root.Parent = workspace
 
-	makePart(root, "Backyard", Vector3.new(120, 1, 120), Vector3.new(0, -0.5, 0), Color3.fromRGB(111, 172, 92), Enum.Material.Grass)
+	-- The place owns its authored ground, terrain, grass, lighting, and dressing.
+	-- This builder only adds gameplay-critical markers and interaction stations.
+	local spawnPosition = authoredSpawnPosition()
+	local groundY = spawnPosition.Y + 0.5
 
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "Spawn"
-	spawn.Size = Vector3.new(8, 1, 8)
-	spawn.Position = Vector3.new(0, 0.5, 18)
-	spawn.Anchored = true
-	spawn.Neutral = true
-	spawn.Parent = root
+	if not workspace:FindFirstChildWhichIsA("SpawnLocation") then
+		local spawn = Instance.new("SpawnLocation")
+		spawn.Name = "Spawn"
+		spawn.Size = Vector3.new(8, 1, 8)
+		spawn.Position = spawnPosition
+		spawn.Anchored = true
+		spawn.Neutral = true
+		spawn.Parent = root
+	end
 
-	careStation(root, "Food Bowl", Vector3.new(-10, 0.5, 8), "feed", Color3.fromRGB(230, 153, 91))
-	careStation(root, "Wash Tub", Vector3.new(0, 0.5, 8), "wash", Color3.fromRGB(91, 178, 230))
-	careStation(root, "Toy Mat", Vector3.new(10, 0.5, 8), "play", Color3.fromRGB(224, 113, 180))
-	careStation(root, "Pet Spot", Vector3.new(0, 0.5, 0), "pet", Color3.fromRGB(232, 211, 114))
+	careStation(root, "Food Bowl", spawnPosition + Vector3.new(-10, groundY - spawnPosition.Y, 8), "feed", Color3.fromRGB(230, 153, 91))
+	careStation(root, "Wash Tub", spawnPosition + Vector3.new(0, groundY - spawnPosition.Y, 8), "wash", Color3.fromRGB(91, 178, 230))
+	careStation(root, "Toy Mat", spawnPosition + Vector3.new(10, groundY - spawnPosition.Y, 8), "play", Color3.fromRGB(224, 113, 180))
+	careStation(root, "Pet Spot", spawnPosition + Vector3.new(0, groundY - spawnPosition.Y, -10), "pet", Color3.fromRGB(232, 211, 114))
 
-	local hatch = makePart(root, "Hatch Nest", Vector3.new(7, 1, 7), Vector3.new(18, 0.5, -4), Color3.fromRGB(238, 220, 166))
+	local hatch = makePart(root, "Hatch Nest", Vector3.new(7, 1, 7), spawnPosition + Vector3.new(18, groundY - spawnPosition.Y, -4), Color3.fromRGB(238, 220, 166))
 	prompt(hatch, "HATCH", "Egg Nest")
 	CollectionService:AddTag(hatch, "PocketBuddyHatchStation")
 
-	local hiddenEgg = makePart(root, "Backyard Egg", Vector3.new(2, 2.6, 2), Vector3.new(-28, 1.3, -24), Color3.fromRGB(231, 241, 201))
+	local hiddenEgg = makePart(root, "Backyard Egg", Vector3.new(2, 2.6, 2), spawnPosition + Vector3.new(-28, groundY - spawnPosition.Y + 0.8, -24), Color3.fromRGB(231, 241, 201))
 	hiddenEgg.Shape = Enum.PartType.Ball
 	hiddenEgg:SetAttribute("EggId", "Backyard")
 	hiddenEgg:SetAttribute("WorldFlag", "found_backyard_egg_001")
 	prompt(hiddenEgg, "TAKE", "??? Egg")
 	CollectionService:AddTag(hiddenEgg, "PocketBuddyEggPickup")
 
-	local couch = makePart(root, "KingOfTheCouch", Vector3.new(20, 3, 8), Vector3.new(0, 1.5, -28), Color3.fromRGB(127, 94, 171))
-	makePart(root, "CouchBack", Vector3.new(20, 6, 2), Vector3.new(0, 4, -31), Color3.fromRGB(111, 80, 153))
+	local couch = makePart(root, "KingOfTheCouch", Vector3.new(20, 3, 8), spawnPosition + Vector3.new(0, groundY - spawnPosition.Y + 1, -28), Color3.fromRGB(127, 94, 171))
+	makePart(root, "CouchBack", Vector3.new(20, 6, 2), spawnPosition + Vector3.new(0, groundY - spawnPosition.Y + 3.5, -31), Color3.fromRGB(111, 80, 153))
 	prompt(couch, "JOIN / LEAVE", "King of the Couch")
 	CollectionService:AddTag(couch, "PocketBuddyPartyQueue")
 	couch:SetAttribute("FutureGameMode", "KingOfTheCouch")
