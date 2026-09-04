@@ -12,15 +12,25 @@ local EggService = require(script.Parent.services.EggService)
 local PartyService = require(script.Parent.services.PartyService)
 local NativeAnimalAnimationService = require(script.Parent.services.NativeAnimalAnimationService)
 local RemoteService = require(script.Parent.services.RemoteService)
+local WorldEventService = require(script.Parent.services.WorldEventService)
+local AdminService = require(script.Parent.services.AdminService)
+local AvatarAssetService = require(script.Parent.services.AvatarAssetService)
+local StudioAssetBridge = require(script.Parent.assets.StudioAssetBridge)
 local DemoWorldBuilder = require(script.Parent.world.DemoWorldBuilder)
 local WorldAssetService = require(script.Parent.world.WorldAssetService)
 local EnvironmentService = require(script.Parent.environment.EnvironmentService)
 local AmbientAnimalService = require(script.Parent.world.AmbientAnimalService)
 
+-- Curate manually imported Studio assets before client-facing services start.
+-- Third-party scripts are never promoted or executed by this bridge.
+StudioAssetBridge.start()
+EnvironmentService.start()
+WorldEventService.start()
+AdminService.start()
+AvatarAssetService.start()
 task.spawn(WorldAssetService.build)
 AmbientAnimalService.start()
 NativeAnimalAnimationService.start()
-EnvironmentService.start()
 if Config.BuildDemoWorld then
 	DemoWorldBuilder.build()
 end
@@ -30,13 +40,14 @@ EggService.bind()
 PartyService.bind()
 
 RemoteService.ProfileRequest.OnServerEvent:Connect(function(player)
-	if RemoteService.rateLimit(player, "profile_request", 1) then return end
+	if not RemoteService.rateLimit(player, "profile_request", 1) then return end
 	if PlayerProfileService.get(player) then
 		PetService.pushProfile(player)
 	end
 end)
 
 local function added(player: Player)
+	AdminService.playerAdded(player)
 	PlayerProfileService.load(player)
 	PetService.spawnActive(player)
 	-- The client also requests a snapshot, but this delayed server push covers the
