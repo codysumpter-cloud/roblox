@@ -127,7 +127,19 @@ RunService.Heartbeat:Connect(function(dt)
 			-- made a nearly stationary pet appear to run.
 			local speed = distance > 80 and 0 or distance * 7
 			local animationState = PetAnimationAdapter.stateForSpeed(speed, true)
-			local animationSpeed = math.clamp(speed / 8, 0.8, 1.5)
+			-- The authored Walk clip is a deliberately slow 2.67-second cycle.
+			-- Scale it against actual presentation velocity or the feet visibly
+			-- moonwalk while the server-owned model catches the avatar.
+			local animationSpeed
+			if animationState == "walkslow" then
+				animationSpeed = math.clamp(speed / 2, 0.7, 1.4)
+			elseif animationState == "walk" then
+				animationSpeed = math.clamp(speed / 4, 0.8, 2.2)
+			elseif animationState == "run" then
+				animationSpeed = math.clamp(speed / 10, 0.9, 2)
+			else
+				animationSpeed = 1
+			end
 			model:SetAttribute("AnimationState", animationState)
 			model:SetAttribute("AnimationSpeed", animationSpeed)
 			PetAnimationAdapter.setState(model, animationState, animationSpeed)

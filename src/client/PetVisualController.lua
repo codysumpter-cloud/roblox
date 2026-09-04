@@ -16,6 +16,7 @@ type Controller = {
 }
 
 local controllers: {[Model]: Controller} = {}
+local reported: {[Model]: boolean} = {}
 local function pose(track, index: number, valueScale: number): CFrame
 	local offset = (index - 1) * 7
 	local v = track.values
@@ -43,20 +44,29 @@ local function attach(model: Model): Controller?
 	local template = model:GetAttribute("RuntimeTemplate")
 	if type(template) ~= "string" then return nil end
 	local module = animationModules:FindFirstChild(template)
-	if not module or not module:IsA("ModuleScript") then return nil end
+	if not module or not module:IsA("ModuleScript") then
+		if not reported[model] then warn(("[PocketBuddy] no animation package for %s template=%s"):format(model:GetFullName(), template)); reported[model] = true end
+		return nil
+	end
 	local data = require(module)
 	local found: {[string]: Bone} = {}
+	local foundCount = 0
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Bone") then found[descendant.Name] = descendant end
+		if descendant:IsA("Bone") then found[descendant.Name] = descendant; foundCount += 1 end
 	end
 	local bones: {[string]: Bone} = {}
 	for _, sourceName in data.bones do
 		local bone = found[sourceName]
-		if not bone then return nil end
+		if not bone then
+			if not reported[model] then warn(("[PocketBuddy] animation rig mismatch model=%s template=%s missingBone=%s foundBones=%d"):format(model:GetFullName(), template, sourceName, foundCount)); reported[model] = true end
+			return nil
+		end
 		bones[sourceName] = bone
 	end
 	local controller = { state = "idle", time = 0, bones = bones, data = data }
 	controllers[model] = controller
+	reported[model] = true
+	print(("[PocketBuddy] client animator attached model=%s template=%s bones=%d"):format(model:GetFullName(), template, #data.bones))
 	return controller
 end
 
@@ -96,7 +106,7 @@ function PetVisualController.start()
 			end
 		end
 		for model in controllers do
-			if not model.Parent then controllers[model] = nil end
+			if not model.Parent then controllers[model] = nil; reported[model] = nil end
 		end
 	end)
 end
