@@ -2,6 +2,7 @@
 local PartCatalog = require(script.Parent.PartCatalog)
 local PetSchema = require(script.Parent.PetSchema)
 local TraitRules = require(script.Parent.TraitRules)
+local RuntimeTemplates = require(script.Parent.RuntimeTemplates)
 
 local PetGenerator = {}
 local MOD = 2147483647
@@ -31,7 +32,9 @@ function PetGenerator.generate(seed: number, id: string)
 	cursor, parts.tail = pick(cursor, PartCatalog.tails)
 	cursor, parts.pattern = pick(cursor, PartCatalog.patterns)
 	cursor, parts.palette = pick(cursor, PartCatalog.palettes)
-	return PetSchema.new(id, seed, parts, TraitRules.fromParts(parts))
+	local pet = PetSchema.new(id, seed, parts, TraitRules.fromParts(parts))
+	pet.runtimeTemplate = RuntimeTemplates.pick(cursor)
+	return pet
 end
 
 return PetGenerator

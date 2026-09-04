@@ -53,6 +53,14 @@ Uploaded Roblox animation IDs are intentionally kept in the Roblox-only
 after publishing the imported actions. Missing IDs are non-fatal: the pet still spawns and follows
 without animation. `Death` is not used for normal gameplay.
 
+The approved textured farm-animal roster and Roblox upload IDs are kept server-side in
+`src/server/adapters/PetAssetRegistry.lua`: Pug (`101214723595393`), Cow (`80854694685461`),
+Llama (`108544690208389`), Horse (`105265549474005`), Sheep (`113838729716972`),
+Pig (`88505317258911`), and Zebra (`138594948463624`). These IDs were taken from the approved
+textured upload receipts. `PetAssetLoader` checks the canonical ServerStorage folder first, then
+uses `InsertService` for an approved registry entry, sanitizes the clone, caches it, and returns
+nil for a safe placeholder fallback if Studio permissions or the asset are unavailable.
+
 The canonical connected development place is `Test real grass` (`PlaceId 86821894064571`). Its
 binary assets are Studio-managed; code remains Rojo-managed. As of the latest verified edit-mode
 inspection, `ServerStorage/PocketBuddyAssets/Pets` exists but contains no Pug. Do not report the Pug

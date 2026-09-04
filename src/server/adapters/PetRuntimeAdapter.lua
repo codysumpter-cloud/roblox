@@ -1,6 +1,6 @@
 --!strict
-local ServerStorage = game:GetService("ServerStorage")
-local PetAssetConfig = require(script.Parent.PetAssetConfig)
+local PetAssetLoader = require(script.Parent.PetAssetLoader)
+local PetAssetRegistry = require(script.Parent.PetAssetRegistry)
 local PetAnimationConfig = require(script.Parent.PetAnimationConfig)
 local PetRuntimeAdapter = {}
 local warnedMissing = {}
@@ -39,13 +39,8 @@ local function findRoot(model: Model): BasePart?
 end
 
 local function templateFor(key: string): Model?
-	local assets = ServerStorage:FindFirstChild("PocketBuddyAssets")
-	local pets = assets and assets:FindFirstChild("Pets")
-	local config = PetAssetConfig[key]
-	local templateName = config and config.templateName or key
-	local candidate = pets and pets:FindFirstChild(templateName)
-	if candidate and candidate:IsA("Model") then return candidate end
-	return nil
+	local template = PetAssetLoader.get(key)
+	return template
 end
 
 local function boundsText(size: Vector3): string
@@ -54,7 +49,7 @@ end
 
 local function normalize(model: Model, key: string): (Vector3, Vector3, number)
 	local _, sourceSize = model:GetBoundingBox()
-	local config = PetAssetConfig[key]
+	local config = PetAssetRegistry[key]
 	local target = config and config.targetLargestDimension
 	local largest = math.max(sourceSize.X, sourceSize.Y, sourceSize.Z)
 	local scale = 1
@@ -75,7 +70,7 @@ end
 local function emitDiagnostics(key: string, found: boolean, sourceSize: Vector3, runtimeSize: Vector3, scale: number)
 	if diagnosticsEmitted[key] then return end
 	diagnosticsEmitted[key] = true
-	local config = PetAssetConfig[key]
+	local config = PetAssetRegistry[key]
 	local appearance = config and config.appearance or "generated-placeholder"
 	print(("[PocketBuddy] template=%s"):format(key))
 	print(("[PocketBuddy] assetFound=%s"):format(tostring(found)))

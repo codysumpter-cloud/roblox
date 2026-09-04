@@ -3,6 +3,7 @@ local PetGenerator = require(script.Parent.PetGenerator)
 local PetSchema = require(script.Parent.PetSchema)
 local PartCatalog = require(script.Parent.PartCatalog)
 local TraitRules = require(script.Parent.TraitRules)
+local RuntimeTemplates = require(script.Parent.RuntimeTemplates)
 
 local SaveSchema = {}
 SaveSchema.VERSION = 1
@@ -10,6 +11,7 @@ SaveSchema.VERSION = 1
 function SaveSchema.default(_userId: number, starterPetId: string, starterSeed: number)
 	local starter = PetGenerator.generate(starterSeed, starterPetId)
 	starter.name = "Buddy"
+	starter.runtimeTemplate = "Pug"
 	return {
 		version = SaveSchema.VERSION,
 		pets = { starter },
@@ -66,7 +68,7 @@ function SaveSchema.sanitize(raw, fallback)
 			local pet = {
 				id = rawId,
 				name = type(rawPet.name) == "string" and string.sub(rawPet.name, 1, 32) or "Buddy",
-				runtimeTemplate = type(rawPet.runtimeTemplate) == "string" and string.sub(rawPet.runtimeTemplate, 1, 64) or "Pug",
+				runtimeTemplate = RuntimeTemplates.isApproved(rawPet.runtimeTemplate) and rawPet.runtimeTemplate or "Pug",
 				seed = math.floor(tonumber(rawPet.seed) or 1),
 				parts = parts,
 				traits = TraitRules.fromParts(parts),
