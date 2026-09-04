@@ -1,4 +1,5 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -7,6 +8,7 @@ local Registry = require(script.Parent.Parent.assets.LegacyAdminEventRegistry)
 local LegacyAdminEventService = {}
 local started = false
 local runtimeRoot: Folder? = nil
+local state: Folder? = nil
 local sourceByKey: {[string]: Instance} = {}
 local runningByKey: {[string]: Instance} = {}
 
@@ -22,13 +24,21 @@ local function matchesAny(name: string, aliases: {string}): boolean
 	return false
 end
 
-local function codeCount(root: Instance): number
-	local count = 0
-	if root:IsA("Script") or root:IsA("LocalScript") or root:IsA("ModuleScript") then count += 1 end
-	for _, item in root:GetDescendants() do
-		if item:IsA("Script") or item:IsA("LocalScript") or item:IsA("ModuleScript") then count += 1 end
+local function codeCounts(root: Instance): (number, number, number)
+	local scripts, localScripts, modules = 0, 0, 0
+	local function count(item: Instance)
+		if item:IsA("Script") then scripts += 1
+		elseif item:IsA("LocalScript") then localScripts += 1
+		elseif item:IsA("ModuleScript") then modules += 1 end
 	end
-	return count
+	count(root)
+	for _, item in root:GetDescendants() do count(item) end
+	return scripts, localScripts, modules
+end
+
+local function totalCode(root: Instance): number
+	local scripts, localScripts, modules = codeCounts(root)
+	return scripts + localScripts + modules
 end
 
 local function rootScore(item: Instance, preferredAliases: {string}): number
@@ -48,9 +58,10 @@ local function findSource(key: string): Instance?
 	local bestScore = -math.huge
 	for _, item in ServerStorage:GetDescendants() do
 		if matchesAny(item.Name, spec.aliases) then
-			local scripts = codeCount(item)
-			if scripts > 0 and scripts <= spec.maxScripts then
-				local score = rootScore(item, spec.preferredRootAliases) - scripts
+			local serverScripts = select(1, codeCounts(item))
+			local total = totalCode(item)
+			if serverScripts > 0 and total <= spec.maxScripts then
+				local score = rootScore(item, spec.preferredRootAliases) - total
 				if score > bestScore then best, bestScore = item, score end
 			end
 		end
@@ -58,23 +69,26 @@ local function findSource(key: string): Instance?
 	return best
 end
 
+local function setRunningState(key: string, running: boolean)
+	if state then state:SetAttribute("LegacyEvent_" .. key, running) end
+end
+
 local function prepareRuntimeClone(source: Instance, key: string): Instance
 	local clone = source:Clone()
 	clone.Name = "PocketBuddyLegacyEvent_" .. key
-	-- LocalScripts from a server event package are not trusted/run here. ModuleScripts
-	-- are preserved because the approved server Script may require them.
-	if clone:IsA("LocalScript") then clone:Destroy(); return Instance.new("Folder") end
+	-- Preserve the approved package exactly, including LocalScripts and
+	-- ModuleScripts. Only server Scripts are temporarily disabled while the clone
+	-- is parented so the full package tree exists before execution begins.
 	if clone:IsA("Script") then clone.Enabled = false end
 	for _, item in clone:GetDescendants() do
-		if item:IsA("LocalScript") then item:Destroy()
-		elseif item:IsA("Script") then item.Enabled = false end
+		if item:IsA("Script") then item.Enabled = false end
 	end
 	clone:SetAttribute("PocketBuddyLegacyEvent", key)
 	clone:SetAttribute("PocketBuddySourcePath", source:GetFullName())
 	return clone
 end
 
-local function enableScripts(root: Instance)
+local function enableServerScripts(root: Instance)
 	if root:IsA("Script") then root.Enabled = true end
 	for _, item in root:GetDescendants() do
 		if item:IsA("Script") then item.Enabled = true end
@@ -84,6 +98,7 @@ end
 function LegacyAdminEventService.start()
 	if started then return end
 	started = true
+	state = ReplicatedStorage:WaitForChild("PocketBuddy"):WaitForChild("EnvironmentState") :: Folder
 	runtimeRoot = ServerScriptService:FindFirstChild("PocketBuddyLegacyEvents") :: Folder?
 	if not runtimeRoot then
 		runtimeRoot = Instance.new("Folder")
@@ -91,11 +106,13 @@ function LegacyAdminEventService.start()
 		runtimeRoot.Parent = ServerScriptService
 	end
 	for key in Registry do
+		setRunningState(key, false)
 		local source = findSource(key)
 		if source then
 			sourceByKey[key] = source
-			print(("[PocketBuddy] approved Admin V5 event found: %s <- %s (%d code objects)")
-				:format(key, source:GetFullName(), codeCount(source)))
+			local scripts, localScripts, modules = codeCounts(source)
+			print(("[PocketBuddy] approved Admin V5 event found: %s <- %s (server=%d local=%d modules=%d)")
+				:format(key, source:GetFullName(), scripts, localScripts, modules))
 		else
 			warn(("[PocketBuddy] approved Admin V5 event not found in ServerStorage: %s"):format(key))
 		end
@@ -113,9 +130,13 @@ end
 
 function LegacyAdminEventService.stop(key: string): boolean
 	local running = runningByKey[key]
-	if not running then return false end
+	if not running then
+		setRunningState(key, false)
+		return false
+	end
 	runningByKey[key] = nil
 	if running.Parent then running:Destroy() end
+	setRunningState(key, false)
 	return true
 end
 
@@ -127,7 +148,8 @@ function LegacyAdminEventService.run(key: string): boolean
 	local clone = prepareRuntimeClone(source, key)
 	clone.Parent = runtimeRoot
 	runningByKey[key] = clone
-	enableScripts(clone)
+	setRunningState(key, true)
+	enableServerScripts(clone)
 	task.delay(spec.maxRuntimeSeconds, function()
 		if runningByKey[key] == clone then LegacyAdminEventService.stop(key) end
 	end)
