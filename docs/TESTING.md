@@ -30,6 +30,18 @@
 4. Cycle Clear, Cloudy, Rain, Storm, Fog, and Snow from the admin UI.
 5. Confirm imported rain/snow/fog/lightning presentation assets are used when present.
 6. Confirm time/weather changes do not spawn a second sky, second clock loop, or second weather loop.
+7. Confirm no imported Sound is promoted without `PocketBuddyApprovedAudio = true`; Clear weather
+   must be silent and unapproved rain/test loops must never start in SoundService.
+
+## Ambient animals and habitats
+1. Confirm `Workspace/PocketBuddyPondArt` exists and the pond contains Terrain water plus the
+   approved uploaded rock/lily-pad models.
+2. Confirm Shark, Dolphin, Whale, Fish1/2/3, and Manta ray remain inside the pond and play Swim.
+3. Confirm land animals continuously settle their visible bounds onto the current ground surface.
+4. Walk into a land animal: its root collider should block the player without the animal tipping,
+   launching, or becoming client-owned.
+5. Confirm land actors reverse instead of walking through a collidable obstacle.
+6. Confirm the companion under `Workspace/PocketBuddies` is not adopted as an ambient actor.
 
 ## Admin V5 / admin-abuse events
 1. Confirm a non-admin client cannot execute `AdminCommand`.

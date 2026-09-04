@@ -25,12 +25,25 @@ local function isCode(instance: Instance): boolean
 	return instance:IsA("Script") or instance:IsA("LocalScript") or instance:IsA("ModuleScript")
 end
 
+local function isApprovedAudio(instance: Instance): boolean
+	return instance:IsA("Sound") and instance:GetAttribute("PocketBuddyApprovedAudio") == true
+end
+
 local function sanitizedClone(source: Instance, name: string?): Instance?
 	if isCode(source) or not source.Archivable then return nil end
+	-- Name matching is not sufficient approval for audio. Imported packs commonly
+	-- contain loud loops, test tones, or replacement music. Keep source audio in
+	-- ServerStorage, but only promote an exact Sound after a human marks it.
+	if source:IsA("Sound") and not isApprovedAudio(source) then return nil end
 	local clone = source:Clone()
 	if name then clone.Name = name end
 	for _, descendant in clone:GetDescendants() do
 		if isCode(descendant) then descendant:Destroy() end
+		if descendant:IsA("Sound") and not isApprovedAudio(descendant) then descendant:Destroy() end
+	end
+	if clone:IsA("Sound") then
+		clone:Stop()
+		clone.PlayOnRemove = false
 	end
 	clone:SetAttribute("PocketBuddyImported", true)
 	clone:SetAttribute("PocketBuddySourceName", source:GetFullName())

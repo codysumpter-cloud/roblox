@@ -27,8 +27,13 @@ ServerStorage
 `ReplicatedStorage/PocketBuddy/StudioPackageInventory`. It does not modify source content.
 
 `StudioAssetBridge` makes safe runtime copies of weather/VFX/audio/UI presentation assets. Scripts
-are removed from **those presentation copies only** because execution remains attached to the
-source package's integration path. The original ServerStorage packages are never stripped.
+are removed from **those presentation copies only**; useful behavior is reimplemented behind the
+repository-owned service/controller boundary. The original ServerStorage packages are never stripped.
+
+Imported `Sound` instances are also inert by default. An exact source Sound must carry the boolean
+attribute `PocketBuddyApprovedAudio = true` before the bridge will promote it. Name matching alone
+must never start global audio; this prevents noisy loops or replacement music from free-model packs
+while leaving their source assets intact for review.
 
 ## Single-owner systems
 
