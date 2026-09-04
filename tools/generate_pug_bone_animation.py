@@ -210,11 +210,12 @@ def main() -> None:
                     rotation = rest_rotation
                 delta_translation = qrotate(qconj(rest_rotation), tuple(a - b for a, b in zip(translation, rest_translation)))
                 delta_rotation = qmul(qconj(rest_rotation), rotation)
-                # World locomotion belongs to the Roblox companion controller. Keep
-                # the authored root rotation, but strip root translation so the clip
-                # cannot drift or double-apply forward/vertical movement.
-                if node_name == "root":
-                    delta_translation = (0.0, 0.0, 0.0)
+                # Blender's exporter bakes constraint/IK evaluation into translation
+                # channels on every pose bone. Applying those offsets again through
+                # Roblox Bone.Transform changes bone lengths and visibly stretches
+                # legs. The imported rest rig already owns joint positions, so keep
+                # the pack's authored rotations and strip baked translations.
+                delta_translation = (0.0, 0.0, 0.0)
                 poses.append((*delta_translation, *delta_rotation))
 
             # Do not emit untouched bones; the runtime resets every bone to its
@@ -233,7 +234,7 @@ def main() -> None:
 
     lines = [
         "--!strict",
-        "-- GENERATED FILE: do not hand-edit; regenerate from the preserved Pug GLB.",
+        "-- GENERATED FILE: do not hand-edit; regenerate from the preserved Quaternius GLB.",
         f"-- Source: {source.name}",
         "return {",
         "    version = 1,",
