@@ -15,27 +15,27 @@ import sys
 
 ALIASES = {
     "Root": ["Root", "root"],
-    "Waist": ["Waist", "Hips", "pelvis"],
-    "Spine": ["Spine", "spine_01"],
-    "Chest": ["Chest", "UpperChest", "spine_03", "spine_05"],
-    "Neck": ["Neck", "neck_01"],
-    "HeadBase": ["HeadBase", "Head", "head"],
-    "LeftClavicle": ["LeftClavicle", "LeftShoulder", "clavicle_l"],
-    "LeftShoulder": ["LeftShoulder", "LeftUpperArm", "upperarm_l"],
-    "LeftElbow": ["LeftElbow", "LeftLowerArm", "lowerarm_l"],
-    "LeftWrist": ["LeftWrist", "LeftHand", "hand_l"],
-    "RightClavicle": ["RightClavicle", "RightShoulder", "clavicle_r"],
-    "RightShoulder": ["RightShoulder", "RightUpperArm", "upperarm_r"],
-    "RightElbow": ["RightElbow", "RightLowerArm", "lowerarm_r"],
-    "RightWrist": ["RightWrist", "RightHand", "hand_r"],
-    "LeftHip": ["LeftHip", "LeftUpperLeg", "thigh_l"],
-    "LeftKnee": ["LeftKnee", "LeftLowerLeg", "calf_l"],
-    "LeftAnkle": ["LeftAnkle", "LeftFoot", "foot_l"],
-    "LeftToeBase": ["LeftToeBase", "LeftToes", "ball_l"],
-    "RightHip": ["RightHip", "RightUpperLeg", "thigh_r"],
-    "RightKnee": ["RightKnee", "RightLowerLeg", "calf_r"],
-    "RightAnkle": ["RightAnkle", "RightFoot", "foot_r"],
-    "RightToeBase": ["RightToeBase", "RightToes", "ball_r"],
+    "Waist": ["Waist", "Hips", "pelvis", "J_Bip_C_Hips"],
+    "Spine": ["Spine", "spine_01", "J_Bip_C_Spine"],
+    "Chest": ["Chest", "UpperChest", "spine_03", "spine_05", "J_Bip_C_Chest", "J_Bip_C_UpperChest"],
+    "Neck": ["Neck", "neck_01", "J_Bip_C_Neck"],
+    "HeadBase": ["HeadBase"],
+    "LeftClavicle": ["LeftClavicle", "clavicle_l", "J_Bip_L_Shoulder"],
+    "LeftShoulder": ["LeftShoulder", "LeftUpperArm", "upperarm_l", "J_Bip_L_UpperArm"],
+    "LeftElbow": ["LeftElbow", "LeftLowerArm", "lowerarm_l", "J_Bip_L_LowerArm"],
+    "LeftWrist": ["LeftWrist", "LeftHand", "hand_l", "J_Bip_L_Hand"],
+    "RightClavicle": ["RightClavicle", "clavicle_r", "J_Bip_R_Shoulder"],
+    "RightShoulder": ["RightShoulder", "RightUpperArm", "upperarm_r", "J_Bip_R_UpperArm"],
+    "RightElbow": ["RightElbow", "RightLowerArm", "lowerarm_r", "J_Bip_R_LowerArm"],
+    "RightWrist": ["RightWrist", "RightHand", "hand_r", "J_Bip_R_Hand"],
+    "LeftHip": ["LeftHip", "LeftUpperLeg", "thigh_l", "J_Bip_L_UpperLeg"],
+    "LeftKnee": ["LeftKnee", "LeftLowerLeg", "calf_l", "J_Bip_L_LowerLeg"],
+    "LeftAnkle": ["LeftAnkle", "LeftFoot", "foot_l", "J_Bip_L_Foot"],
+    "LeftToeBase": ["LeftToeBase", "LeftToes", "ball_l", "J_Bip_L_ToeBase"],
+    "RightHip": ["RightHip", "RightUpperLeg", "thigh_r", "J_Bip_R_UpperLeg"],
+    "RightKnee": ["RightKnee", "RightLowerLeg", "calf_r", "J_Bip_R_LowerLeg"],
+    "RightAnkle": ["RightAnkle", "RightFoot", "foot_r", "J_Bip_R_Foot"],
+    "RightToeBase": ["RightToeBase", "RightToes", "ball_r", "J_Bip_R_ToeBase"],
 }
 REQUIRED = [
     "Root", "Waist", "Neck",
@@ -45,20 +45,36 @@ REQUIRED = [
     "RightHip", "RightKnee", "RightAnkle",
 ]
 DIGITS = {
-    "LeftThumb1": ["LeftThumbMetacarpal", "LeftThumbProximal", "thumb_01_l"],
-    "LeftThumb2": ["LeftThumbProximal", "thumb_02_l"],
-    "LeftThumb3": ["LeftThumbDistal", "thumb_03_l"],
-    "LeftIndex1": ["LeftIndexProximal", "index_01_l"], "LeftIndex2": ["LeftIndexIntermediate", "index_02_l"], "LeftIndex3": ["LeftIndexDistal", "index_03_l"],
-    "LeftMiddle1": ["LeftMiddleProximal", "middle_01_l"], "LeftMiddle2": ["LeftMiddleIntermediate", "middle_02_l"], "LeftMiddle3": ["LeftMiddleDistal", "middle_03_l"],
-    "LeftRing1": ["LeftRingProximal", "ring_01_l"], "LeftRing2": ["LeftRingIntermediate", "ring_02_l"], "LeftRing3": ["LeftRingDistal", "ring_03_l"],
-    "LeftPinky1": ["LeftLittleProximal", "pinky_01_l"], "LeftPinky2": ["LeftLittleIntermediate", "pinky_02_l"], "LeftPinky3": ["LeftLittleDistal", "pinky_03_l"],
-    "RightThumb1": ["RightThumbMetacarpal", "RightThumbProximal", "thumb_01_r"],
-    "RightThumb2": ["RightThumbProximal", "thumb_02_r"],
-    "RightThumb3": ["RightThumbDistal", "thumb_03_r"],
-    "RightIndex1": ["RightIndexProximal", "index_01_r"], "RightIndex2": ["RightIndexIntermediate", "index_02_r"], "RightIndex3": ["RightIndexDistal", "index_03_r"],
-    "RightMiddle1": ["RightMiddleProximal", "middle_01_r"], "RightMiddle2": ["RightMiddleIntermediate", "middle_02_r"], "RightMiddle3": ["RightMiddleDistal", "middle_03_r"],
-    "RightRing1": ["RightRingProximal", "ring_01_r"], "RightRing2": ["RightRingIntermediate", "ring_02_r"], "RightRing3": ["RightRingDistal", "ring_03_r"],
-    "RightPinky1": ["RightLittleProximal", "pinky_01_r"], "RightPinky2": ["RightLittleIntermediate", "pinky_02_r"], "RightPinky3": ["RightLittleDistal", "pinky_03_r"],
+    "LeftThumb1": ["LeftThumbMetacarpal", "LeftThumbProximal", "thumb_01_l", "J_Bip_L_Thumb1"],
+    "LeftThumb2": ["LeftThumbProximal", "thumb_02_l", "J_Bip_L_Thumb2"],
+    "LeftThumb3": ["LeftThumbDistal", "thumb_03_l", "J_Bip_L_Thumb3"],
+    "LeftIndex1": ["LeftIndexProximal", "index_01_l", "J_Bip_L_Index1"],
+    "LeftIndex2": ["LeftIndexIntermediate", "index_02_l", "J_Bip_L_Index2"],
+    "LeftIndex3": ["LeftIndexDistal", "index_03_l", "J_Bip_L_Index3"],
+    "LeftMiddle1": ["LeftMiddleProximal", "middle_01_l", "J_Bip_L_Middle1"],
+    "LeftMiddle2": ["LeftMiddleIntermediate", "middle_02_l", "J_Bip_L_Middle2"],
+    "LeftMiddle3": ["LeftMiddleDistal", "middle_03_l", "J_Bip_L_Middle3"],
+    "LeftRing1": ["LeftRingProximal", "ring_01_l", "J_Bip_L_Ring1"],
+    "LeftRing2": ["LeftRingIntermediate", "ring_02_l", "J_Bip_L_Ring2"],
+    "LeftRing3": ["LeftRingDistal", "ring_03_l", "J_Bip_L_Ring3"],
+    "LeftPinky1": ["LeftLittleProximal", "pinky_01_l", "J_Bip_L_Little1"],
+    "LeftPinky2": ["LeftLittleIntermediate", "pinky_02_l", "J_Bip_L_Little2"],
+    "LeftPinky3": ["LeftLittleDistal", "pinky_03_l", "J_Bip_L_Little3"],
+    "RightThumb1": ["RightThumbMetacarpal", "RightThumbProximal", "thumb_01_r", "J_Bip_R_Thumb1"],
+    "RightThumb2": ["RightThumbProximal", "thumb_02_r", "J_Bip_R_Thumb2"],
+    "RightThumb3": ["RightThumbDistal", "thumb_03_r", "J_Bip_R_Thumb3"],
+    "RightIndex1": ["RightIndexProximal", "index_01_r", "J_Bip_R_Index1"],
+    "RightIndex2": ["RightIndexIntermediate", "index_02_r", "J_Bip_R_Index2"],
+    "RightIndex3": ["RightIndexDistal", "index_03_r", "J_Bip_R_Index3"],
+    "RightMiddle1": ["RightMiddleProximal", "middle_01_r", "J_Bip_R_Middle1"],
+    "RightMiddle2": ["RightMiddleIntermediate", "middle_02_r", "J_Bip_R_Middle2"],
+    "RightMiddle3": ["RightMiddleDistal", "middle_03_r", "J_Bip_R_Middle3"],
+    "RightRing1": ["RightRingProximal", "ring_01_r", "J_Bip_R_Ring1"],
+    "RightRing2": ["RightRingIntermediate", "ring_02_r", "J_Bip_R_Ring2"],
+    "RightRing3": ["RightRingDistal", "ring_03_r", "J_Bip_R_Ring3"],
+    "RightPinky1": ["RightLittleProximal", "pinky_01_r", "J_Bip_R_Little1"],
+    "RightPinky2": ["RightLittleIntermediate", "pinky_02_r", "J_Bip_R_Little2"],
+    "RightPinky3": ["RightLittleDistal", "pinky_03_r", "J_Bip_R_Little3"],
 }
 
 
@@ -133,7 +149,11 @@ def main() -> int:
         args.json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     status = "PASS" if report["adaptive_animation_preflight"] else "FAIL"
     print(f"ROBLOX_AVATAR_PREFLIGHT_{status}")
-    print(f"skins={report['skins']} joints={report['skin_joint_count']} required={report['required_mapped']}/{report['required_total']} body={report['body_joint_mapped']}/22 digits={report['digit_joint_mapped']}/30")
+    print(
+        f"skins={report['skins']} joints={report['skin_joint_count']} "
+        f"required={report['required_mapped']}/{report['required_total']} "
+        f"body={report['body_joint_mapped']}/22 digits={report['digit_joint_mapped']}/30"
+    )
     if report["missing_required"]:
         print("missing=" + ",".join(report["missing_required"]))
     return 0 if report["adaptive_animation_preflight"] else 1
