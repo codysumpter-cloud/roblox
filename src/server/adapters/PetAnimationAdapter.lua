@@ -1,83 +1,158 @@
 --!strict
-local PetAnimationConfig = require(script.Parent.PetAnimationConfig)
+local AnimationData = require(script.Parent.PugAnimationData)
+
+type Track = {
+	times: {number},
+	values: {number},
+}
+
+type Clip = {
+	duration: number,
+	tracks: {[string]: Track},
+}
+
+type Transition = {
+	from: {[string]: CFrame},
+	elapsed: number,
+	duration: number,
+}
+
+type Controller = {
+	state: string,
+	time: number,
+	speed: number,
+	bones: {[string]: Bone},
+	base: {[string]: CFrame},
+	transition: Transition?,
+}
+
+local clips = AnimationData.clips :: {[string]: Clip}
+local valueScale = AnimationData.valueScale
+local timeScale = AnimationData.timeScale
+local active: {[Model]: Controller} = {}
+
+local function clipForState(state: string): Clip
+	-- Walk is the normal companion pace. WalkSlow remains available for callers
+	-- that want a deliberately sleepy animation without changing the state API.
+	return clips[state] or clips.idle
+end
+
+local function collectController(model: Model): Controller
+	local bones: {[string]: Bone} = {}
+	local base: {[string]: CFrame} = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Bone") then
+			bones[descendant.Name] = descendant
+			base[descendant.Name] = descendant.Transform
+		end
+	end
+	local controller: Controller = {
+		state = "idle",
+		time = 0,
+		speed = 1,
+		bones = bones,
+		base = base,
+		transition = nil,
+	}
+	active[model] = controller
+	return controller
+end
+
+local function poseFromValues(track: Track, index: number): CFrame
+	local offset = (index - 1) * 7
+	local values = track.values
+	return CFrame.new(
+		values[offset + 1] / valueScale,
+		values[offset + 2] / valueScale,
+		values[offset + 3] / valueScale
+	) * CFrame.new(0, 0, 0,
+		values[offset + 4] / valueScale,
+		values[offset + 5] / valueScale,
+		values[offset + 6] / valueScale,
+		values[offset + 7] / valueScale
+	)
+end
+
+local function sampleTrack(track: Track, time: number): CFrame
+	local times = track.times
+	local count = #times
+	if count == 0 then return CFrame.identity end
+	if count == 1 or time <= times[1] / timeScale then
+		return poseFromValues(track, 1)
+	end
+	if time >= times[count] / timeScale then
+		return poseFromValues(track, count)
+	end
+
+	local upper = 2
+	while upper < count and time > times[upper] / timeScale do
+		upper += 1
+	end
+	local lower = upper - 1
+	local lowerTime = times[lower] / timeScale
+	local upperTime = times[upper] / timeScale
+	local alpha = math.clamp((time - lowerTime) / math.max(upperTime - lowerTime, 1e-6), 0, 1)
+	return poseFromValues(track, lower):Lerp(poseFromValues(track, upper), alpha)
+end
+
+local function targetPose(controller: Controller, clip: Clip, boneName: string): CFrame
+	local base = controller.base[boneName] or CFrame.identity
+	local track = clip.tracks[boneName]
+	if not track then return base end
+	return base * sampleTrack(track, controller.time)
+end
 
 local PetAnimationAdapter = {}
-local active: {[Model]: {state: string, track: AnimationTrack?}} = {}
-local warnedMissing = false
-local warnedController: {[Model]: boolean} = {}
-local animationIds: {[string]: string} = PetAnimationConfig
-
-local function getAnimator(model: Model): Animator?
-	local animator = model:FindFirstChildWhichIsA("Animator", true)
-	if animator then return animator end
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	local controller = model:FindFirstChildWhichIsA("AnimationController", true)
-	if not controller and not humanoid then
-		if not warnedController[model] then
-			warnedController[model] = true
-			warn(("[PocketBuddy] pet %s has no Humanoid/AnimationController; running without animation"):format(model.Name))
-		end
-		return nil
-	end
-	local parent = humanoid or controller
-	animator = parent and parent:FindFirstChildOfClass("Animator")
-	if not animator and parent then
-		animator = Instance.new("Animator")
-		animator.Parent = parent
-	end
-	return animator
-end
-
-local function assetIdFor(state: string): string?
-	local value = animationIds[state]
-	if type(value) ~= "string" or value == "" then return nil end
-	if string.sub(value, 1, 13) == "rbxassetid://" then return value end
-	return "rbxassetid://" .. value
-end
-
-local function warnMissingIds()
-	if warnedMissing then return end
-	local missing = {}
-	for _, state in { "idle", "walk", "run", "jump" } do
-		if not assetIdFor(state) then table.insert(missing, state) end
-	end
-	if #missing > 0 then
-		warnedMissing = true
-		warn(("[PocketBuddy] Pug animation IDs missing (publish and set PetAnimationConfig.lua): %s"):format(table.concat(missing, ", ")))
-	end
-end
 
 function PetAnimationAdapter.setState(model: Model, state: string, speed: number?)
-	local current = active[model]
-	if current and current.state == state then
-		if current.track then current.track:AdjustSpeed(speed or 1) end
+	local normalized = string.lower(state)
+	if not clips[normalized] then normalized = "idle" end
+	local controller = active[model] or collectController(model)
+	local nextSpeed = math.clamp(speed or 1, 0.05, 3)
+	if controller.state == normalized then
+		controller.speed = nextSpeed
 		return
 	end
-	if current and current.track then current.track:Stop(0.15) end
-	local id = assetIdFor(state)
-	if not id then
-		warnMissingIds()
-		active[model] = { state = state, track = nil }
-		return
+
+	local from: {[string]: CFrame} = {}
+	for boneName, bone in controller.bones do
+		from[boneName] = bone.Transform
 	end
-	local animator = getAnimator(model)
-	if not animator then
-		active[model] = { state = state, track = nil }
-		return
+	controller.state = normalized
+	controller.time = 0
+	controller.speed = nextSpeed
+	controller.transition = {
+		from = from,
+		elapsed = 0,
+		duration = normalized == "jump" and 0.10 or 0.18,
+	}
+end
+
+function PetAnimationAdapter.step(model: Model, dt: number)
+	local controller = active[model]
+	if not controller then return end
+	local clip = clipForState(controller.state)
+	if clip.duration > 0 then
+		local nextTime = controller.time + math.max(dt, 0) * controller.speed
+		if controller.state == "jump" then
+			controller.time = math.min(nextTime, clip.duration)
+		else
+			controller.time = nextTime % clip.duration
+		end
 	end
-	local animation = Instance.new("Animation")
-	animation.AnimationId = id
-	local ok, track = pcall(function() return animator:LoadAnimation(animation) end)
-	animation:Destroy()
-	if not ok or not track then
-		warn(("[PocketBuddy] could not load pet animation state %s for %s"):format(state, model.Name))
-		active[model] = { state = state, track = nil }
-		return
+
+	local transition = controller.transition
+	if transition then transition.elapsed += math.max(dt, 0) end
+	local alpha = transition and math.clamp(transition.elapsed / transition.duration, 0, 1) or 1
+	for boneName, bone in controller.bones do
+		local target = targetPose(controller, clip, boneName)
+		if transition then
+			bone.Transform = (transition.from[boneName] or controller.base[boneName] or CFrame.identity):Lerp(target, alpha)
+		else
+			bone.Transform = target
+		end
 	end
-	track.Looped = state ~= "jump"
-	track.Priority = state == "jump" and Enum.AnimationPriority.Action or Enum.AnimationPriority.Movement
-	track:Play(0.15, 1, speed or 1)
-	active[model] = { state = state, track = track }
+	if transition and alpha >= 1 then controller.transition = nil end
 end
 
 function PetAnimationAdapter.stateForSpeed(speed: number, grounded: boolean): string
@@ -88,10 +163,13 @@ function PetAnimationAdapter.stateForSpeed(speed: number, grounded: boolean): st
 end
 
 function PetAnimationAdapter.clear(model: Model)
-	local current = active[model]
-	if current and current.track then current.track:Stop(0) end
+	local controller = active[model]
+	if controller then
+		for boneName, bone in controller.bones do
+			bone.Transform = controller.base[boneName] or CFrame.identity
+		end
+	end
 	active[model] = nil
-	warnedController[model] = nil
 end
 
 return PetAnimationAdapter

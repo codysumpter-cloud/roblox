@@ -25,6 +25,16 @@ local function playerNear(player: Player, instance: Instance): boolean
 	return root ~= nil and root:IsA("BasePart") and target ~= nil and (root.Position - target).Magnitude <= MAX_DISTANCE
 end
 
+local function showCareEffect(action: string, station: Instance)
+	local target = positionOf(station)
+	if not target then return end
+	local kind = if action == "wash" then "wash"
+		elseif action == "pet" then "friendship"
+		elseif action == "play" then "play"
+		else "feed"
+	RemoteService.VFX:FireAllClients({ kind = kind, position = target })
+end
+
 local function use(player: Player, station: Instance)
 	if not playerNear(player, station) then return end
 	local action = station:GetAttribute("CareAction")
@@ -44,7 +54,10 @@ local function use(player: Player, station: Instance)
 			profile.worldFlags.play_egg_earned_001 = true
 			profile.eggs.Play = (profile.eggs.Play or 0) + 1
 			RemoteService.Notify:FireClient(player, "Play Egg earned!")
+			local target = positionOf(station)
+			if target then RemoteService.VFX:FireAllClients({ kind = "egg", position = target }) end
 		end
+		showCareEffect(action, station)
 		PetService.pushProfile(player)
 		RemoteService.Notify:FireClient(player, ("Buddy enjoyed %s!"):format(action))
 	end

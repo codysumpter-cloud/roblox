@@ -110,9 +110,21 @@ RunService.Heartbeat:Connect(function(dt)
 			else
 				model:PivotTo(current:Lerp(desired, math.clamp(dt * 7, 0, 1)))
 			end
-			local speed = distance > 80 and 0 or distance / math.max(dt, 1 / 60)
+			-- Lerp closes roughly dt*7 of the gap each frame, so distance*7 is
+			-- the companion's presentation speed. Dividing the whole gap by dt
+			-- made a nearly stationary pet appear to run.
+			local speed = distance > 80 and 0 or distance * 7
 			PetAnimationAdapter.setState(model, PetAnimationAdapter.stateForSpeed(speed, true), math.clamp(speed / 8, 0.8, 1.5))
+		elseif partyMode[player] and model.Parent then
+			local root = model.PrimaryPart
+			if root then
+				local velocity = root.AssemblyLinearVelocity
+				local horizontalSpeed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+				local grounded = math.abs(velocity.Y) < 3
+				PetAnimationAdapter.setState(model, PetAnimationAdapter.stateForSpeed(horizontalSpeed, grounded), 1)
+			end
 		end
+		PetAnimationAdapter.step(model, dt)
 	end
 end)
 

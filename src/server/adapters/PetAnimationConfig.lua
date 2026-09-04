@@ -1,6 +1,6 @@
 --!strict
--- Uploaded animation IDs are intentionally a Roblox-side concern. Populate these
--- after publishing the imported Pug actions through Studio's Animation Editor.
+-- Optional Roblox Animation asset IDs. Bone curves in PugAnimationData.lua are
+-- the default runtime path, so publishing these is not required for animation.
 return {
 	idle = "",
 	walk = "",

@@ -46,6 +46,15 @@ local function notify(player: Player, message: string)
 	RemoteService.Notify:FireClient(player, message)
 end
 
+local function roundVFX(kind: string, position: Vector3, value: number?)
+	for _, userId in state.players do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			RemoteService.VFX:FireClient(player, { kind = kind, position = position, value = value })
+		end
+	end
+end
+
 local function publish(secondsLeft: number?)
 	local players = {}
 	for _, userId in state.players do table.insert(players, userId) end
@@ -84,6 +93,14 @@ local function finishRound(token: number)
 	state.phase = RoundRules.Phase.Results
 	local remaining = RoundRules.remaining(state)
 	if #remaining == 1 then state.winnerUserId = remaining[1] end
+	local winner = state.winnerUserId and Players:GetPlayerByUserId(state.winnerUserId)
+	local winnerModel = winner and PetService.runtimeModel(winner)
+	local winnerRoot = winnerModel and winnerModel.PrimaryPart
+	if winnerRoot and winnerRoot:IsA("BasePart") then
+		roundVFX("winner", winnerRoot.Position)
+	else
+		roundVFX("winner", roundCouchCenter)
+	end
 	local rewarded = false
 	for _, userId in state.players do
 		local player = Players:GetPlayerByUserId(userId)
@@ -105,7 +122,6 @@ local function finishRound(token: number)
 	for _, userId in state.players do
 		local player = Players:GetPlayerByUserId(userId)
 		if player then
-			local winner = state.winnerUserId and Players:GetPlayerByUserId(state.winnerUserId)
 			notify(player, winner and ("%s wins King of the Couch!"):format(winner.Name) or "Nobody stayed on the couch!")
 		end
 	end
@@ -269,6 +285,7 @@ local function startRound()
 	for seconds = mode.countdownSeconds, 1, -1 do
 		if token ~= roundToken or state.phase ~= RoundRules.Phase.Countdown then return end
 		publish(seconds)
+		roundVFX("countdown", findCouchCenter(), seconds)
 		task.wait(1)
 	end
 	if token ~= roundToken then return end

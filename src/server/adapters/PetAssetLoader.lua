@@ -30,7 +30,9 @@ local function sanitize(model: Model): boolean
 	if not root then return false end
 	model.PrimaryPart = root
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("ModuleScript") then
+		if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("ModuleScript")
+			or descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")
+			or descendant:IsA("BindableEvent") or descendant:IsA("BindableFunction") then
 			descendant:Destroy()
 		elseif descendant:IsA("BasePart") then
 			descendant.CanCollide = false

@@ -48,10 +48,14 @@ export material-preserving GLBs from the canonical `.blend` files. Use
 manifest must show non-default `baseColorFactor` values for the source materials, and rigged assets
 must retain skins and animation clips.
 
-Uploaded Roblox animation IDs are intentionally kept in the Roblox-only
-`src/server/adapters/PetAnimationConfig.lua`. Supply IDs for `idle`, `walk`, `run`, and `jump`
-after publishing the imported actions. Missing IDs are non-fatal: the pet still spawns and follows
-without animation. `Death` is not used for normal gameplay.
+Uploaded Roblox animation IDs remain an optional Roblox-only migration path in
+`src/server/adapters/PetAnimationConfig.lua`. The runtime does not depend on published IDs: when
+the imported Pug has its Bone hierarchy, `PetAnimationAdapter` plays the authored `Idle`, `Walk`,
+`WalkSlow`, `Run`, and `Jump` curves from the generated `PugAnimationData.lua` artifact. That
+artifact is regenerated from the preserved source GLB with
+`tools/generate_pug_bone_animation.py`; it applies interpolated local bind-pose deltas through
+`Bone.Transform` and restores the imported pose when the runtime clone is cleared. `Death` is not
+used for normal gameplay.
 
 The approved textured farm-animal roster and Roblox upload IDs are kept server-side in
 `src/server/adapters/PetAssetRegistry.lua`: Pug (`101214723595393`), Cow (`80854694685461`),

@@ -12,9 +12,11 @@ local EggService = require(script.Parent.services.EggService)
 local PartyService = require(script.Parent.services.PartyService)
 local RemoteService = require(script.Parent.services.RemoteService)
 local DemoWorldBuilder = require(script.Parent.world.DemoWorldBuilder)
-local WorldArtAdapter = require(script.Parent.adapters.WorldArtAdapter)
+local WorldAssetService = require(script.Parent.world.WorldAssetService)
+local EnvironmentService = require(script.Parent.environment.EnvironmentService)
 
-WorldArtAdapter.apply()
+task.spawn(WorldAssetService.build)
+EnvironmentService.start()
 if Config.BuildDemoWorld then
 	DemoWorldBuilder.build()
 end

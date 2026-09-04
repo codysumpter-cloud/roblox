@@ -49,6 +49,8 @@ local function awardWorldEgg(player: Player, pickup: Instance)
 	profile.eggs[eggId] = (profile.eggs[eggId] or 0) + 1
 	PetService.pushProfile(player)
 	RemoteService.Notify:FireClient(player, ("Found a %s Egg!"):format(eggId))
+	local target = positionOf(pickup)
+	if target then RemoteService.VFX:FireAllClients({ kind = "egg", position = target }) end
 end
 
 local function hatch(player: Player, station: Instance)
@@ -84,6 +86,8 @@ local function hatch(player: Player, station: Instance)
 	profile.activePetId = pet.id
 	PetService.refresh(player)
 	RemoteService.Notify:FireClient(player, ("Hatched %s!"):format(pet.name))
+	local target = positionOf(station)
+	if target then RemoteService.VFX:FireAllClients({ kind = "hatch", position = target }) end
 end
 
 function EggService.bind()
