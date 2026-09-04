@@ -5,6 +5,8 @@ local PetAnimationConfig = require(script.Parent.PetAnimationConfig)
 local PetRuntimeAdapter = {}
 local warnedMissing = {}
 local diagnosticsEmitted = {}
+local groundingDiagnosticsEmitted = {}
+local GROUND_CLEARANCE = 0.03
 
 local paletteColors = {
 	sky = Color3.fromRGB(106, 220, 245),
@@ -65,6 +67,15 @@ local function normalize(model: Model, key: string): (Vector3, Vector3, number)
 	end
 	local _, runtimeSize = model:GetBoundingBox()
 	return sourceSize, runtimeSize, scale
+end
+
+local function cacheBottomOffset(model: Model): number
+	local bounds, size = model:GetBoundingBox()
+	local pivot = model:GetPivot()
+	local bottomY = bounds.Position.Y - size.Y / 2
+	local offset = pivot.Position.Y - bottomY
+	model:SetAttribute("GroundBottomOffset", offset)
+	return offset
 end
 
 local function emitDiagnostics(key: string, found: boolean, sourceSize: Vector3, runtimeSize: Vector3, scale: number)
@@ -135,6 +146,7 @@ function PetRuntimeAdapter.build(pet): (Model, boolean)
 		if root then model.PrimaryPart = root end
 		if root then
 			local sourceSize, runtimeSize, scale = normalize(model, key)
+			cacheBottomOffset(model)
 			emitDiagnostics(key, true, sourceSize, runtimeSize, scale)
 			return model, true
 		end
@@ -151,8 +163,41 @@ function PetRuntimeAdapter.build(pet): (Model, boolean)
 	local fallback = PetRuntimeAdapter.buildPlaceholder(pet)
 	fallback:SetAttribute("RuntimeTemplate", key)
 	local _, fallbackSize = fallback:GetBoundingBox()
+	cacheBottomOffset(fallback)
 	emitDiagnostics(key, false, fallbackSize, fallbackSize, 1)
 	return fallback, false
+end
+
+function PetRuntimeAdapter.groundedCFrame(model: Model, character: Model, desiredXZ: Vector3, facing: Vector3): CFrame?
+	local characterRoot = character:FindFirstChild("HumanoidRootPart")
+	if not characterRoot or not characterRoot:IsA("BasePart") then return nil end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.RespectCanCollide = true
+	local excluded: { Instance } = { character, model }
+	for _, name in { "PocketBuddies", "PocketBuddyHub", "PocketBuddyRuntimeArt" } do
+		local instance = workspace:FindFirstChild(name)
+		if instance then table.insert(excluded, instance) end
+	end
+	params.FilterDescendantsInstances = excluded
+	local origin = Vector3.new(desiredXZ.X, characterRoot.Position.Y + 50, desiredXZ.Z)
+	local hit = workspace:Raycast(origin, Vector3.new(0, -250, 0), params)
+	if not hit then return nil end
+	local bottomOffset = model:GetAttribute("GroundBottomOffset")
+	if type(bottomOffset) ~= "number" then bottomOffset = cacheBottomOffset(model) end
+	local direction = Vector3.new(facing.X, 0, facing.Z)
+	if direction.Magnitude < 0.001 then direction = Vector3.new(0, 0, -1) else direction = direction.Unit end
+	local finalPosition = Vector3.new(desiredXZ.X, hit.Position.Y + bottomOffset + GROUND_CLEARANCE, desiredXZ.Z)
+	local result = CFrame.lookAt(finalPosition, finalPosition + direction)
+	local key = model:GetAttribute("RuntimeTemplate")
+	if type(key) == "string" and not groundingDiagnosticsEmitted[key] then
+		groundingDiagnosticsEmitted[key] = true
+		local bounds, size = model:GetBoundingBox()
+		print(("[PocketBuddy] %s runtime bounds=%s pivotY=%.3f bottomRelativeToPivot=%.3f groundY=%.3f finalPivotY=%.3f"):format(
+			key, boundsText(size), model:GetPivot().Position.Y, bottomOffset, hit.Position.Y, finalPosition.Y
+		))
+	end
+	return result
 end
 
 function PetRuntimeAdapter.prepare(model: Model)

@@ -1,5 +1,6 @@
 --!strict
 local AnimationData = require(script.Parent.PugAnimationData)
+local PugBoneMap = require(script.Parent.PugBoneMap)
 
 type Track = {
 	times: {number},
@@ -18,6 +19,7 @@ type Transition = {
 }
 
 type Controller = {
+	enabled: boolean,
 	state: string,
 	time: number,
 	speed: number,
@@ -38,15 +40,29 @@ local function clipForState(state: string): Clip
 end
 
 local function collectController(model: Model): Controller
+	local isPug = model:GetAttribute("RuntimeTemplate") == "Pug"
+	local discovered: {[string]: Bone} = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Bone") then discovered[descendant.Name] = descendant end
+	end
 	local bones: {[string]: Bone} = {}
 	local base: {[string]: CFrame} = {}
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Bone") then
-			bones[descendant.Name] = descendant
-			base[descendant.Name] = descendant.Transform
+	local missing = {}
+	if isPug then
+		for sourceName, robloxName in PugBoneMap do
+			local bone = discovered[robloxName]
+			if bone then
+				bones[sourceName] = bone
+				base[sourceName] = bone.Transform
+			else
+				table.insert(missing, sourceName)
+			end
 		end
+		print(("[PocketBuddy] Pug animation bones mapped=%d/%d"):format(#AnimationData.bones - #missing, #AnimationData.bones))
+		if #missing > 0 then warn("[PocketBuddy] missing Pug animation bones: " .. table.concat(missing, ", ")) end
 	end
 	local controller: Controller = {
+		enabled = isPug and #missing == 0,
 		state = "idle",
 		time = 0,
 		speed = 1,
@@ -130,7 +146,7 @@ end
 
 function PetAnimationAdapter.step(model: Model, dt: number)
 	local controller = active[model]
-	if not controller then return end
+	if not controller or not controller.enabled then return end
 	local clip = clipForState(controller.state)
 	if clip.duration > 0 then
 		local nextTime = controller.time + math.max(dt, 0) * controller.speed
@@ -157,9 +173,10 @@ end
 
 function PetAnimationAdapter.stateForSpeed(speed: number, grounded: boolean): string
 	if not grounded then return "jump" end
-	if speed >= 12 then return "run" end
-	if speed >= 1 then return "walk" end
-	return "idle"
+	if speed < 0.35 then return "idle" end
+	if speed < 3 then return "walkslow" end
+	if speed < 10 then return "walk" end
+	return "run"
 end
 
 function PetAnimationAdapter.clear(model: Model)

@@ -13,6 +13,17 @@ local folder = workspace:FindFirstChild("PocketBuddies") or Instance.new("Folder
 folder.Name = "PocketBuddies"
 folder.Parent = workspace
 
+local function followTarget(model: Model, character: Model, rootPart: BasePart): CFrame?
+	local horizontalOffset = rootPart.CFrame:VectorToWorldSpace(Vector3.new(3, 0, 2.4))
+	local desiredXZ = rootPart.Position + Vector3.new(horizontalOffset.X, 0, horizontalOffset.Z)
+	local facing = Vector3.new(rootPart.AssemblyLinearVelocity.X, 0, rootPart.AssemblyLinearVelocity.Z)
+	if facing.Magnitude < 0.5 then
+		local look = rootPart.CFrame.LookVector
+		facing = Vector3.new(look.X, 0, look.Z)
+	end
+	return PetRuntimeAdapter.groundedCFrame(model, character, desiredXZ, facing)
+end
+
 local function snapshot(player: Player)
 	local profile = PlayerProfileService.get(player)
 	if not profile then return end
@@ -40,6 +51,12 @@ function PetService.spawnActive(player: Player)
 	model.Parent = folder
 	runtime[player] = model
 	partyMode[player] = nil
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if character and rootPart and rootPart:IsA("BasePart") then
+		local initial = followTarget(model, character, rootPart)
+		if initial then model:PivotTo(initial) end
+	end
 	PetAnimationAdapter.setState(model, "idle")
 	snapshot(player)
 end
@@ -95,16 +112,11 @@ RunService.Heartbeat:Connect(function(dt)
 		local character = player.Character
 		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
 		if not partyMode[player] and rootPart and rootPart:IsA("BasePart") and model.Parent then
-			local offset = rootPart.CFrame:VectorToWorldSpace(Vector3.new(3, -1.5, 2.4))
-			local desiredPosition = rootPart.Position + offset
+			local desired = followTarget(model, character, rootPart)
+			if not desired then continue end
+			local desiredPosition = desired.Position
 			local current = model:GetPivot()
 			local distance = (current.Position - desiredPosition).Magnitude
-			local facing = Vector3.new(rootPart.AssemblyLinearVelocity.X, 0, rootPart.AssemblyLinearVelocity.Z)
-			if facing.Magnitude < 0.5 then
-				local look = rootPart.CFrame.LookVector
-				facing = Vector3.new(look.X, 0, look.Z)
-			end
-			local desired = CFrame.lookAt(desiredPosition, desiredPosition + facing)
 			if distance > 80 then
 				model:PivotTo(desired)
 			else
