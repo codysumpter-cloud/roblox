@@ -13,19 +13,23 @@ local PartyService = require(script.Parent.services.PartyService)
 local NativeAnimalAnimationService = require(script.Parent.services.NativeAnimalAnimationService)
 local RemoteService = require(script.Parent.services.RemoteService)
 local WorldEventService = require(script.Parent.services.WorldEventService)
+local LegacyAdminEventService = require(script.Parent.services.LegacyAdminEventService)
 local AdminService = require(script.Parent.services.AdminService)
 local AvatarAssetService = require(script.Parent.services.AvatarAssetService)
 local StudioAssetBridge = require(script.Parent.assets.StudioAssetBridge)
+local StudioPackageInventory = require(script.Parent.assets.StudioPackageInventory)
 local DemoWorldBuilder = require(script.Parent.world.DemoWorldBuilder)
 local WorldAssetService = require(script.Parent.world.WorldAssetService)
 local EnvironmentService = require(script.Parent.environment.EnvironmentService)
 local AmbientAnimalService = require(script.Parent.world.AmbientAnimalService)
 
--- Curate manually imported Studio assets before client-facing services start.
--- Third-party scripts are never promoted or executed by this bridge.
+-- Studio-managed source packs remain intact in ServerStorage. Inventory them first,
+-- then expose curated runtime adapters without mutating the source packages.
+StudioPackageInventory.start()
 StudioAssetBridge.start()
 EnvironmentService.start()
 WorldEventService.start()
+LegacyAdminEventService.start()
 AdminService.start()
 AvatarAssetService.start()
 task.spawn(WorldAssetService.build)
