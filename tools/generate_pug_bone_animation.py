@@ -163,7 +163,13 @@ def main() -> None:
     clips: dict[str, dict[str, Any]] = {}
     for animation in gltf.get("animations", []):
         name = animation.get("name", "")
-        key = name.lower()
+        raw_key = name.lower()
+        suffix = raw_key.rsplit("_", 1)[-1]
+        key = suffix
+        # Aquatic/flying showcase animals have a single continuous locomotion
+        # action. Treat it as their idle presentation clip.
+        if key in {"swim", "flying"}:
+            key = "idle"
         if key not in {"idle", "walk", "walkslow", "run", "jump"}:
             continue
         channels_by_node: dict[int, dict[str, tuple[list[float], list[tuple[float, ...]], str]]] = {}
@@ -229,8 +235,8 @@ def main() -> None:
             tracks[node_name] = {"times": sample_times, "poses": poses}
         clips[key] = {"name": name, "duration": duration, "tracks": tracks}
 
-    if set(clips) != {"idle", "walk", "walkslow", "run", "jump"}:
-        raise ValueError(f"Missing required clips: {sorted(set(('idle', 'walk', 'walkslow', 'run', 'jump')) - set(clips))}")
+    if "idle" not in clips:
+        raise ValueError(f"No idle/swim/flying presentation clip found in {source.name}")
 
     lines = [
         "--!strict",
@@ -244,6 +250,8 @@ def main() -> None:
         "    clips = {",
     ]
     for key in ("idle", "walkslow", "walk", "run", "jump"):
+        if key not in clips:
+            continue
         clip = clips[key]
         lines += [
             f"        {key} = {{",

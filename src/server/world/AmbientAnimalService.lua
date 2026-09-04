@@ -5,7 +5,12 @@
 local CollectionService = game:GetService("CollectionService")
 
 local AmbientAnimalService = {}
-local TEMPLATES = { "Pug", "Cow", "Horse", "Llama", "Pig", "Sheep", "Zebra" }
+local TEMPLATES = {
+	"Pug", "Cow", "Horse", "Llama", "Pig", "Sheep", "Zebra",
+	"Trex", "Velociraptor", "Triceratops", "Parasaurolophus", "Stegosaurus", "Apatosaurus",
+	"Shark", "Dolphin", "Whale", "Fish1", "Fish2", "Fish3", "Manta ray",
+	"Snake", "Wasp", "Frog", "Rat", "Spider",
+}
 
 local function templateFor(model: Model): string?
 	for _, template in TEMPLATES do
