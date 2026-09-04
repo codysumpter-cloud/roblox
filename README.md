@@ -45,11 +45,16 @@ See `docs/GAME_DESIGN.md` and `docs/ROADMAP.md`.
 
 ```text
 src/shared/core/        portable rules/data; no Roblox services or Instances
+src/shared/avatar/      portable humanoid/GASP semantic contracts
 src/server/adapters/    DataStore, IDs, runtime model/platform bridges
-src/server/services/    server-authoritative gameplay orchestration
+src/server/assets/      Studio-package inventory/curation policy
+src/server/services/    server-authoritative gameplay/admin/event orchestration
 src/server/world/       Roblox demo-world construction
-src/client/             HUD/input/presentation
+src/client/             HUD/input/presentation/animation adapters
 ```
+
+See `docs/ROBLOX_AVATAR_GASP.md` for the VRoid/Unreal -> Advanced R15/GASP path and
+`docs/STUDIO_PACK_INTEGRATION.md` for the non-destructive ServerStorage/Admin V5 integration policy.
 
 ## Roblox Studio + Rojo
 1. Install Rojo.
@@ -65,6 +70,12 @@ does not replace Terrain or grass. The first runtime template is `Pug`, resolved
 Studio-managed `ServerStorage/PocketBuddyAssets/Pets/Pug` path and normalized at clone time. A
 missing template safely falls back to generated placeholder geometry.
 
+Studio-managed imported packs are intentionally outside Rojo ownership. The server inventories
+those packages without mutating them and promotes script-free presentation assets through explicit
+adapters. Imported scripts are never enabled by a name-based allowlist; useful behavior must be
+reviewed and ported behind a repository-owned service. Global time/weather/Lighting are owned by one
+canonical environment service so imported packs cannot create competing skies or clock/weather loops.
+
 ## Current status
 **Source-backed:** initial product spec, portable schemas/rules, server services/adapters, Pug runtime
 asset adapter, care/egg interactions, save schema, HUD, authored-world-safe gameplay builder, and the
@@ -72,7 +83,15 @@ initial King of the Couch queue/controller/round foundation are in the repo. The
 includes server-owned intent validation, physical pet control, elimination, results, and Party Egg
 rewards.
 
-**Unverified:** Roblox Studio runtime. This still needs its first Studio play test.
+The repo now also contains a portable GASP semantic manifest matching the Godot integration,
+Advanced R15/Adaptive Animation source-rig preflight, a Roblox GASP locomotion adapter that retains
+stock animation as its incomplete-catalog fallback, Studio package inventory/curation, one
+canonical weather/time owner, validated creator/group-owner admin commands, and a sanitized imported
+Admin V5 presentation path with repository-owned **Raining Tacos** event state.
+
+**Unverified:** Roblox Studio runtime. Studio-only imported packages, their script contents, actual
+GASP Animation asset IDs, custom-avatar Adaptive Animation mappings, and event execution still need
+Play-mode verification in the canonical place. Do not call these runtime verified from GitHub alone.
 
 ## License
 Source-available, not open source. See `LICENSE`.
