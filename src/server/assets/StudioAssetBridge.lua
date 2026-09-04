@@ -1,9 +1,9 @@
 --!strict
--- Curates useful Studio-managed assets without executing third-party code.
+-- Curates presentation/runtime assets from Studio-managed source packages.
 -- Rojo intentionally does not own ServerStorage/PocketBuddyAssets, so imported
--- models/effects can coexist with this repository. This bridge promotes only
--- presentation assets into ReplicatedStorage; Script/LocalScript/ModuleScript
--- descendants are always removed from promoted clones.
+-- models/effects/scripts remain intact there. This bridge strips executable code
+-- only from the COPIES it exposes to clients; executable package integration is
+-- handled separately by explicit services such as LegacyAdminEventService.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -123,13 +123,15 @@ function StudioAssetBridge.start(): {[string]: number}
 	if fxFolder then report.fx += copyFolderChildren(fxFolder, fxAssets) end
 	if putClone(namedLike({ "healed", "heal" }, { "BasePart", "Model", "Folder" }), fxAssets, "Healed") then report.fx += 1 end
 
-	-- Raining Tacos and similar admin-pack event art are presentation assets. The
-	-- repo-owned WorldEventController drives them; imported scripts remain inert.
+	-- These are fallback presentation assets only. If the real Admin V5 Raining
+	-- Tacos package is approved and found, LegacyAdminEventService runs that intact
+	-- package and AdminService keeps the synthetic fallback disabled.
 	if putClone(visualContainerLike({ "rainingtacos", "raining tacos", "tacorain", "taco rain" }), eventAssets, "RainingTacos") then report.events += 1 end
 	if putClone(namedLike({ "taco" }, { "Sound" }), eventAssets, "TacoSound") then report.events += 1 end
 
-	-- Preserve an imported admin panel as a visual skin. AdminController binds
-	-- sanitized buttons by name/text to server-validated commands.
+	-- Preserve an imported admin panel as a presentation skin. The original panel
+	-- and all of its scripts remain untouched in ServerStorage; this replicated
+	-- copy intentionally contains no executable code.
 	local adminGui = namedLike({ "admin v5", "adminv5", "admin" }, { "ScreenGui" })
 	if putClone(adminGui, adminAssets, "AdminPanel") then report.admin += 1 end
 
