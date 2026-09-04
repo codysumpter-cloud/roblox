@@ -2,7 +2,6 @@
 local RunService = game:GetService("RunService")
 local SaveSchema = require(game.ReplicatedStorage.PocketBuddy.Shared.core.SaveSchema)
 local PetRuntimeAdapter = require(script.Parent.Parent.adapters.PetRuntimeAdapter)
-local PetAnimationAdapter = require(script.Parent.Parent.adapters.PetAnimationAdapter)
 local PlayerProfileService = require(script.Parent.PlayerProfileService)
 local RemoteService = require(script.Parent.RemoteService)
 
@@ -41,7 +40,6 @@ function PetService.spawnActive(player: Player)
 	if not pet then return end
 
 	if runtime[player] then
-		PetAnimationAdapter.clear(runtime[player])
 		runtime[player]:Destroy()
 	end
 	local model = select(1, PetRuntimeAdapter.build(pet))
@@ -57,7 +55,8 @@ function PetService.spawnActive(player: Player)
 		local initial = followTarget(model, character, rootPart)
 		if initial then model:PivotTo(initial) end
 	end
-	PetAnimationAdapter.setState(model, "idle")
+	model:SetAttribute("AnimationState", "idle")
+	model:SetAttribute("AnimationSpeed", 1)
 	snapshot(player)
 end
 
@@ -66,7 +65,6 @@ function PetService.enterParty(player: Player, position: Vector3)
 	local pet = profile and SaveSchema.activePet(profile)
 	if not pet then return nil end
 	if runtime[player] then
-		PetAnimationAdapter.clear(runtime[player])
 		runtime[player]:Destroy()
 	end
 	local model = select(1, PetRuntimeAdapter.build(pet))
@@ -78,7 +76,8 @@ function PetService.enterParty(player: Player, position: Vector3)
 	PetRuntimeAdapter.setPhysics(model, true)
 	runtime[player] = model
 	partyMode[player] = true
-	PetAnimationAdapter.setState(model, "idle")
+	model:SetAttribute("AnimationState", "idle")
+	model:SetAttribute("AnimationSpeed", 1)
 	return model
 end
 
@@ -100,7 +99,6 @@ end
 
 function PetService.remove(player: Player)
 	if runtime[player] then
-		PetAnimationAdapter.clear(runtime[player])
 		runtime[player]:Destroy()
 	end
 	runtime[player] = nil
@@ -126,7 +124,11 @@ RunService.Heartbeat:Connect(function(dt)
 			-- the companion's presentation speed. Dividing the whole gap by dt
 			-- made a nearly stationary pet appear to run.
 			local speed = distance > 80 and 0 or distance * 7
-			local animationState = PetAnimationAdapter.stateForSpeed(speed, true)
+			local animationState
+			if speed < 0.35 then animationState = "idle"
+			elseif speed < 3 then animationState = "walkslow"
+			elseif speed < 10 then animationState = "walk"
+			else animationState = "run" end
 			-- The authored Walk clip is a deliberately slow 2.67-second cycle.
 			-- Scale it against actual presentation velocity or the feet visibly
 			-- moonwalk while the server-owned model catches the avatar.
@@ -142,20 +144,22 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 			model:SetAttribute("AnimationState", animationState)
 			model:SetAttribute("AnimationSpeed", animationSpeed)
-			PetAnimationAdapter.setState(model, animationState, animationSpeed)
 		elseif partyMode[player] and model.Parent then
 			local root = model.PrimaryPart
 			if root then
 				local velocity = root.AssemblyLinearVelocity
 				local horizontalSpeed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
 				local grounded = math.abs(velocity.Y) < 3
-				local animationState = PetAnimationAdapter.stateForSpeed(horizontalSpeed, grounded)
+				local animationState
+				if not grounded then animationState = "jump"
+				elseif horizontalSpeed < 0.35 then animationState = "idle"
+				elseif horizontalSpeed < 3 then animationState = "walkslow"
+				elseif horizontalSpeed < 10 then animationState = "walk"
+				else animationState = "run" end
 				model:SetAttribute("AnimationState", animationState)
 				model:SetAttribute("AnimationSpeed", 1)
-				PetAnimationAdapter.setState(model, animationState, 1)
 			end
 		end
-		PetAnimationAdapter.step(model, dt)
 	end
 end)
 

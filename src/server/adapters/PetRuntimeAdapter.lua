@@ -1,7 +1,6 @@
 --!strict
 local PetAssetLoader = require(script.Parent.PetAssetLoader)
 local PetAssetRegistry = require(script.Parent.PetAssetRegistry)
-local PetAnimationConfig = require(script.Parent.PetAnimationConfig)
 local PetRuntimeAdapter = {}
 local warnedMissing = {}
 local diagnosticsEmitted = {}
@@ -89,10 +88,6 @@ local function emitDiagnostics(key: string, found: boolean, sourceSize: Vector3,
 	print(("[PocketBuddy] runtimeBounds=%s"):format(boundsText(runtimeSize)))
 	print(("[PocketBuddy] scale=%.6f"):format(scale))
 	print(("[PocketBuddy] appearance=%s"):format(appearance))
-	for _, state in { "idle", "walk", "run", "jump" } do
-		local value = PetAnimationConfig[state]
-		print(("[PocketBuddy] animation %s=%s"):format(state, tostring(type(value) == "string" and value ~= "")))
-	end
 end
 
 function PetRuntimeAdapter.buildPlaceholder(pet): Model
@@ -201,6 +196,16 @@ function PetRuntimeAdapter.groundedCFrame(model: Model, character: Model, desire
 end
 
 function PetRuntimeAdapter.prepare(model: Model)
+	local controller = model:FindFirstChildOfClass("AnimationController")
+	if not controller then
+		controller = Instance.new("AnimationController")
+		controller.Name = "AnimationController"
+		controller.Parent = model
+	end
+	if not controller:FindFirstChildOfClass("Animator") then
+		local animator = Instance.new("Animator")
+		animator.Parent = controller
+	end
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			-- Hub companions are presentation-only. Anchor only the resolved root on a

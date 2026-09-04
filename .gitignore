@@ -3,6 +3,7 @@
 *.rbxlx
 *.rbxm
 *.rbxmx
+!src/shared/native_animations/**/*.rbxmx
 sourcemap.json
 /build/
 /dist/

@@ -51,7 +51,7 @@ def multipart_body(metadata: dict, file_path: Path) -> tuple[bytes, str]:
         f"--{boundary}\r\nContent-Disposition: form-data; name=\"request\"\r\nContent-Type: application/json\r\n\r\n".encode(),
         json.dumps(metadata, separators=(",", ":")).encode(),
         b"\r\n",
-        f"--{boundary}\r\nContent-Disposition: form-data; name=\"fileContent\"; filename=\"{file_path.name}\"\r\nContent-Type: {mimetypes.guess_type(file_path.name)[0] or 'model/gltf-binary'}\r\n\r\n".encode(),
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"fileContent\"; filename=\"{file_path.name}\"\r\nContent-Type: {content_type(file_path)}\r\n\r\n".encode(),
         file_bytes,
         b"\r\n",
         f"--{boundary}--\r\n".encode(),
@@ -66,11 +66,17 @@ def operation_id(payload: dict) -> str:
     return str(value).rstrip("/").split("/")[-1]
 
 
-def upload_one(api_key: str, user_id: str, path: Path, display_name: str) -> dict:
+def content_type(file_path: Path) -> str:
+    if file_path.suffix.lower() in {".rbxm", ".rbxmx"}:
+        return "model/x-rbxm"
+    return mimetypes.guess_type(file_path.name)[0] or "model/gltf-binary"
+
+
+def upload_one(api_key: str, user_id: str, path: Path, display_name: str, asset_type: str, description: str) -> dict:
     metadata = {
-        "assetType": "Model",
+        "assetType": asset_type,
         "displayName": display_name,
-        "description": "Pocket Buddy source asset reimport with embedded material textures.",
+        "description": description,
         "creationContext": {"creator": {"userId": user_id}, "expectedPrice": 0},
     }
     body, boundary = multipart_body(metadata, path)
@@ -124,6 +130,10 @@ def main() -> None:
     parser.add_argument("root", type=Path)
     parser.add_argument("--user-id", required=True)
     parser.add_argument("--suffix", default="_Textured")
+    parser.add_argument("--asset-type", choices=("Model", "Animation"), default="Model")
+    parser.add_argument("--description", default="Pocket Buddy source asset reimport with embedded material textures.")
+    parser.add_argument("--extension", action="append", default=[])
+    parser.add_argument("--include-parent", action="store_true", help="Prefix display names with the immediate parent folder")
     parser.add_argument("--receipts", type=Path, required=True)
     parser.add_argument("--only", action="append", default=[], help="Case-insensitive asset stem; repeatable")
     parser.add_argument("--workers", type=int, default=1, choices=range(1, 9))
@@ -135,7 +145,13 @@ def main() -> None:
 
     root = args.root.resolve()
     selected = {name.casefold() for name in args.only}
-    files = sorted(root.rglob("*.glb"), key=lambda value: str(value).casefold())
+    extensions = {value.lower().lstrip(".") for value in args.extension}
+    if not extensions:
+        extensions = {"rbxm", "rbxmx"} if args.asset_type == "Animation" else {"glb"}
+    files = sorted(
+        (path for path in root.rglob("*") if path.is_file() and path.suffix.lower().lstrip(".") in extensions),
+        key=lambda value: str(value).casefold(),
+    )
     if selected:
         files = [path for path in files if path.stem.casefold() in selected]
     completed = read_completed(args.receipts)
@@ -158,7 +174,8 @@ def main() -> None:
             print(f"FAILED {index}/{len(files)} {relative}: file exceeds 20 MB", flush=True)
             return record
         try:
-            result = upload_one(api_key, args.user_id, path, f"{path.stem}{args.suffix}")
+            stem = f"{path.parent.name}_{path.stem}" if args.include_parent else path.stem
+            result = upload_one(api_key, args.user_id, path, f"{stem}{args.suffix}", args.asset_type, args.description)
             record.update(status="uploaded", **result)
             print(f"UPLOADED {index}/{len(files)} {relative} operation={result['operation_id']}", flush=True)
         except Exception as exc:

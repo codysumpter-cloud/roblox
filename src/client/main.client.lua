@@ -6,7 +6,6 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local VFXController = require(script.Parent.VFXController)
 local EnvironmentController = require(script.Parent.EnvironmentController)
-local PetVisualController = require(script.Parent.PetVisualController)
 
 local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("PocketBuddyRemotes")
@@ -18,7 +17,6 @@ local RoundUpdated = remotes:WaitForChild("RoundUpdated") :: RemoteEvent
 
 VFXController.start()
 EnvironmentController.start()
-PetVisualController.start()
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "PocketBuddyHUD"
