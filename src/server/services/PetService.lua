@@ -126,14 +126,21 @@ RunService.Heartbeat:Connect(function(dt)
 			-- the companion's presentation speed. Dividing the whole gap by dt
 			-- made a nearly stationary pet appear to run.
 			local speed = distance > 80 and 0 or distance * 7
-			PetAnimationAdapter.setState(model, PetAnimationAdapter.stateForSpeed(speed, true), math.clamp(speed / 8, 0.8, 1.5))
+			local animationState = PetAnimationAdapter.stateForSpeed(speed, true)
+			local animationSpeed = math.clamp(speed / 8, 0.8, 1.5)
+			model:SetAttribute("AnimationState", animationState)
+			model:SetAttribute("AnimationSpeed", animationSpeed)
+			PetAnimationAdapter.setState(model, animationState, animationSpeed)
 		elseif partyMode[player] and model.Parent then
 			local root = model.PrimaryPart
 			if root then
 				local velocity = root.AssemblyLinearVelocity
 				local horizontalSpeed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
 				local grounded = math.abs(velocity.Y) < 3
-				PetAnimationAdapter.setState(model, PetAnimationAdapter.stateForSpeed(horizontalSpeed, grounded), 1)
+				local animationState = PetAnimationAdapter.stateForSpeed(horizontalSpeed, grounded)
+				model:SetAttribute("AnimationState", animationState)
+				model:SetAttribute("AnimationSpeed", 1)
+				PetAnimationAdapter.setState(model, animationState, 1)
 			end
 		end
 		PetAnimationAdapter.step(model, dt)

@@ -14,8 +14,10 @@ local RemoteService = require(script.Parent.services.RemoteService)
 local DemoWorldBuilder = require(script.Parent.world.DemoWorldBuilder)
 local WorldAssetService = require(script.Parent.world.WorldAssetService)
 local EnvironmentService = require(script.Parent.environment.EnvironmentService)
+local AmbientAnimalService = require(script.Parent.world.AmbientAnimalService)
 
 task.spawn(WorldAssetService.build)
+AmbientAnimalService.start()
 EnvironmentService.start()
 if Config.BuildDemoWorld then
 	DemoWorldBuilder.build()
