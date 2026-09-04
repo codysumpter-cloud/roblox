@@ -37,15 +37,13 @@
 3. Confirm the imported Admin V5 panel is used as the visual skin when present; otherwise the
    fallback panel is shown.
 4. Trigger **Raining Tacos**.
-5. When the real Admin V5 Raining Tacos package is present, confirm Output reports it as approved and
-   the real package runs; `LegacyEvent_RainingTacos` becomes true while running.
-6. Confirm the synthetic taco fallback does not run at the same time as the real Admin V5 package.
-7. Stop/toggle the event and confirm the runtime package is removed.
-8. Confirm the approved event is automatically cleaned up after its maximum runtime.
-9. Confirm unrelated imported scripts remain untouched.
-10. Locate the previously observed malicious glitch/PNG source in Studio before allowing that
-    specific package to execute in production; record its exact path/fingerprint rather than
-    deleting unrelated pack scripts.
+5. Confirm `EnvironmentState.TacoRain` changes for every client and the event stops/toggles cleanly.
+6. Confirm sanitized imported taco meshes/audio are used when present.
+7. Confirm no Script, LocalScript, or ModuleScript was copied into ReplicatedStorage runtime assets.
+8. Confirm no vendor Script is enabled or cloned into ServerScriptService by the event.
+9. Confirm unrelated imported source packages remain untouched in ServerStorage.
+10. Locate and quarantine the previously observed malicious glitch/PNG source in Studio by exact
+    path/fingerprint; do not enable that package or delete unrelated pack scripts.
 
 ## Advanced avatar / GASP
 1. Put one VRoid/Unreal/Prismtek-derived model at

@@ -2,8 +2,8 @@
 -- Curates presentation/runtime assets from Studio-managed source packages.
 -- Rojo intentionally does not own ServerStorage/PocketBuddyAssets, so imported
 -- models/effects/scripts remain intact there. This bridge strips executable code
--- only from the COPIES it exposes to clients; executable package integration is
--- handled separately by explicit services such as LegacyAdminEventService.
+-- from every COPY it exposes to clients. Imported code is inventory-only until
+-- its exact source has been reviewed and ported behind a repository-owned API.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -123,9 +123,8 @@ function StudioAssetBridge.start(): {[string]: number}
 	if fxFolder then report.fx += copyFolderChildren(fxFolder, fxAssets) end
 	if putClone(namedLike({ "healed", "heal" }, { "BasePart", "Model", "Folder" }), fxAssets, "Healed") then report.fx += 1 end
 
-	-- These are fallback presentation assets only. If the real Admin V5 Raining
-	-- Tacos package is approved and found, LegacyAdminEventService runs that intact
-	-- package and AdminService keeps the synthetic fallback disabled.
+	-- Imported taco meshes and audio are presentation inputs only. The
+	-- repository-owned WorldEventService remains the sole executable owner.
 	if putClone(visualContainerLike({ "rainingtacos", "raining tacos", "tacorain", "taco rain" }), eventAssets, "RainingTacos") then report.events += 1 end
 	if putClone(namedLike({ "taco" }, { "Sound" }), eventAssets, "TacoSound") then report.events += 1 end
 

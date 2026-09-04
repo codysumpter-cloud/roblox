@@ -71,10 +71,10 @@ Studio-managed `ServerStorage/PocketBuddyAssets/Pets/Pug` path and normalized at
 missing template safely falls back to generated placeholder geometry.
 
 Studio-managed imported packs are intentionally outside Rojo ownership. The server inventories
-those packages without mutating them, promotes presentation assets through explicit adapters, and
-only executes explicitly approved legacy event packages. Global time/weather/Lighting are owned by
-one canonical environment service so imported packs cannot accidentally create competing skies or
-clock/weather loops.
+those packages without mutating them and promotes script-free presentation assets through explicit
+adapters. Imported scripts are never enabled by a name-based allowlist; useful behavior must be
+reviewed and ported behind a repository-owned service. Global time/weather/Lighting are owned by one
+canonical environment service so imported packs cannot create competing skies or clock/weather loops.
 
 ## Current status
 **Source-backed:** initial product spec, portable schemas/rules, server services/adapters, Pug runtime
@@ -86,8 +86,8 @@ rewards.
 The repo now also contains a portable GASP semantic manifest matching the Godot integration,
 Advanced R15/Adaptive Animation source-rig preflight, a Roblox GASP locomotion adapter that retains
 stock animation as its incomplete-catalog fallback, Studio package inventory/curation, one
-canonical weather/time owner, validated creator/group-owner admin commands, and an approved legacy
-Admin V5 event path with **Raining Tacos** as the first registered event.
+canonical weather/time owner, validated creator/group-owner admin commands, and a sanitized imported
+Admin V5 presentation path with repository-owned **Raining Tacos** event state.
 
 **Unverified:** Roblox Studio runtime. Studio-only imported packages, their script contents, actual
 GASP Animation asset IDs, custom-avatar Adaptive Animation mappings, and event execution still need

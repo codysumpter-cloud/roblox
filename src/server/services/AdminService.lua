@@ -4,7 +4,6 @@ local RunService = game:GetService("RunService")
 local RemoteService = require(script.Parent.RemoteService)
 local EnvironmentService = require(script.Parent.Parent.environment.EnvironmentService)
 local WorldEventService = require(script.Parent.WorldEventService)
-local LegacyAdminEventService = require(script.Parent.LegacyAdminEventService)
 
 local AdminService = {}
 local started = false
@@ -23,9 +22,6 @@ end
 
 local function snapshot(player: Player): {[string]: any}
 	local environment = EnvironmentService.getState()
-	local legacy = LegacyAdminEventService.report()
-	local legacyTacos = legacy.RainingTacos
-	local tacoRunning = type(legacyTacos) == "table" and legacyTacos.running == true
 	return {
 		authorized = isAdmin(player),
 		weather = environment.weather,
@@ -33,8 +29,7 @@ local function snapshot(player: Player): {[string]: any}
 		forcedWeather = environment.forcedWeather,
 		forcedClockTime = environment.forcedClockTime,
 		availableWeather = EnvironmentService.availableWeather(),
-		tacoRain = tacoRunning or WorldEventService.get("TacoRain"),
-		legacyAdminEvents = legacy,
+		tacoRain = WorldEventService.get("TacoRain"),
 	}
 end
 
@@ -43,23 +38,6 @@ local function push(player: Player)
 end
 
 local function setTacos(mode: string): boolean
-	if LegacyAdminEventService.available("RainingTacos") then
-		-- The real Admin V5 event owns presentation when available; make sure the
-		-- repo fallback is off so players never see two taco systems at once.
-		WorldEventService.set("TacoRain", false)
-		if mode == "on" or mode == "true" or mode == "1" then
-			return LegacyAdminEventService.run("RainingTacos")
-		elseif mode == "off" or mode == "false" or mode == "0" then
-			LegacyAdminEventService.stop("RainingTacos")
-			return true
-		elseif mode == "toggle" then
-			return LegacyAdminEventService.toggle("RainingTacos") ~= nil
-		end
-		return false
-	end
-
-	-- Fallback only exists for a clean checkout / Studio place where Admin V5
-	-- has not been imported yet.
 	if mode == "on" or mode == "true" or mode == "1" then
 		return WorldEventService.set("TacoRain", true)
 	elseif mode == "off" or mode == "false" or mode == "0" then

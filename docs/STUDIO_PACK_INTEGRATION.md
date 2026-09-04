@@ -20,10 +20,7 @@ ServerStorage
           +--> StudioPackageInventory (read-only report)
           |
           +--> StudioAssetBridge
-          |      presentation/runtime clones only
-          |
-          +--> LegacyAdminEventService
-                 explicitly approved executable event packages only
+                 sanitized presentation/runtime clones only
 ```
 
 `StudioPackageInventory` reports code-bearing and presentation-bearing top-level packages into
@@ -44,7 +41,7 @@ Current canonical owners:
 - Lighting Sky/Atmosphere/post effects: `PocketBuddy.EnvironmentService`
 - Terrain Clouds: `PocketBuddy.EnvironmentService`
 - admin authorization/command validation: `PocketBuddy.AdminService`
-- admin event package lifecycle: `PocketBuddy.LegacyAdminEventService`
+- admin event state/lifecycle: `PocketBuddy.WorldEventService`
 
 A weather/time pack can still contribute particles, sounds, palettes, transitions, effects, and
 special-event code. Its continuous global loop should be adapted behind `EnvironmentService`
@@ -55,20 +52,11 @@ instead of fighting another loop for `Lighting.ClockTime`, `Sky`, `Atmosphere`, 
 Admin-abuse events are intentional promotional/hype features. They are not treated as ordinary
 weather and they are not globally enabled on server boot.
 
-`LegacyAdminEventRegistry.lua` is the executable allowlist. `RainingTacos` is the first registered
-event. On an authorized admin request:
-
-1. find the matching package in ServerStorage, preferring a parent named like Admin V5;
-2. require that it contains a server Script and stays under a code-count ceiling;
-3. clone the entire approved package without deleting LocalScripts or ModuleScripts;
-4. temporarily hold server Scripts disabled until the clone is fully parented;
-5. enable the package's server Scripts;
-6. automatically destroy the runtime clone after the configured maximum duration;
-7. never launch another package merely because it happens to contain scripts.
-
-The repo's synthetic taco effect is only a clean-checkout fallback when the real Admin V5 package
-is not present. When the real event is available it owns presentation and the fallback is disabled,
-preventing duplicate taco systems.
+The imported Admin V5 panel and Raining Tacos assets are treated as presentation sources. Runtime
+clones have Script, LocalScript, and ModuleScript descendants removed. The repository-owned
+`AdminService` validates authorization and commands, while `WorldEventService` owns the replicated
+event state. `WorldEventController` may use sanitized imported meshes and sounds without executing
+unknown vendor code.
 
 ## Malicious-content boundary
 
@@ -77,9 +65,10 @@ created two unwanted/unselectable PNG-style glitch visuals in the map. Its exact
 asset fingerprint is not represented in GitHub, so this branch does **not** guess at a signature and
 does not delete unrelated scripts to compensate.
 
-Before enabling an unreviewed executable package in production, identify the exact offending source
-in Studio and quarantine that source specifically. Do not respond by mass-deleting every script in
-the imported packs; that destroys legitimate systems and makes later integration impossible.
+Unreviewed executable packages are never enabled by name or folder location. Identify the exact
+offending source in Studio and quarantine that source specifically. Preserve unrelated source packs
+for inspection, then port useful behavior behind a repository-owned, validated service rather than
+mass-enabling or mass-deleting vendor scripts.
 
 ## Current Studio paths
 
