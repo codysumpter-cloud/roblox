@@ -74,6 +74,28 @@ local function stateFolder(): Folder
 	return folder
 end
 
+local function canonicalStringValue(parent: Instance, name: string, defaultValue: string): StringValue
+	local current = parent:FindFirstChild(name)
+	if current and current:IsA("StringValue") then return current end
+	if current then current:Destroy() end
+	local value = Instance.new("StringValue")
+	value.Name = name
+	value.Value = defaultValue
+	value.Parent = parent
+	return value
+end
+
+local function canonicalNumberValue(parent: Instance, name: string, defaultValue: number): NumberValue
+	local current = parent:FindFirstChild(name)
+	if current and current:IsA("NumberValue") then return current end
+	if current then current:Destroy() end
+	local value = Instance.new("NumberValue")
+	value.Name = name
+	value.Value = defaultValue
+	value.Parent = parent
+	return value
+end
+
 local function timePalette(clockTime: number)
 	if clockTime >= 6 and clockTime < 9 then return Color3.fromRGB(255, 205, 165), Color3.fromRGB(255, 166, 118), 1.85 end
 	if clockTime >= 9 and clockTime < 17.5 then return Color3.fromRGB(255, 247, 230), Color3.fromRGB(220, 236, 255), 2.35 end
@@ -93,8 +115,7 @@ function EnvironmentService.availableWeather(): {string}
 end
 
 function EnvironmentService.setWeather(name: string): boolean
-	if not EnvironmentService.isWeather(name) then return false end
-	if not forceWeather then return false end
+	if not EnvironmentService.isWeather(name) or not forceWeather then return false end
 	forceWeather.Value = name
 	return true
 end
@@ -142,22 +163,15 @@ function EnvironmentService.start()
 	sunRays.Intensity, sunRays.Spread = 0.07, 0.9
 	color.Contrast, color.Saturation = 0.06, 0.08
 
-	local debugFolder = ServerStorage:FindFirstChild("PocketBuddyEnvironmentDebug") or Instance.new("Folder")
-	debugFolder.Name = "PocketBuddyEnvironmentDebug"
-	debugFolder.Parent = ServerStorage
-	forceWeather = debugFolder:FindFirstChild("ForceWeather") :: StringValue?
-	if not forceWeather then
-		forceWeather = Instance.new("StringValue")
-		forceWeather.Name = "ForceWeather"
-		forceWeather.Parent = debugFolder
+	local debugFolder = ServerStorage:FindFirstChild("PocketBuddyEnvironmentDebug")
+	if debugFolder and not debugFolder:IsA("Folder") then debugFolder:Destroy(); debugFolder = nil end
+	if not debugFolder then
+		debugFolder = Instance.new("Folder")
+		debugFolder.Name = "PocketBuddyEnvironmentDebug"
+		debugFolder.Parent = ServerStorage
 	end
-	forceClock = debugFolder:FindFirstChild("ForceClockTime") :: NumberValue?
-	if not forceClock then
-		forceClock = Instance.new("NumberValue")
-		forceClock.Name = "ForceClockTime"
-		forceClock.Value = -1
-		forceClock.Parent = debugFolder
-	end
+	forceWeather = canonicalStringValue(debugFolder, "ForceWeather", "")
+	forceClock = canonicalNumberValue(debugFolder, "ForceClockTime", -1)
 
 	local elapsed, weatherElapsed, weatherIndex = 0, 0, 1
 	local current = Config.weatherSequence[weatherIndex]
