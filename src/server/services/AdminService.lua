@@ -24,6 +24,8 @@ end
 local function snapshot(player: Player): {[string]: any}
 	local environment = EnvironmentService.getState()
 	local legacy = LegacyAdminEventService.report()
+	local legacyTacos = legacy.RainingTacos
+	local tacoRunning = type(legacyTacos) == "table" and legacyTacos.running == true
 	return {
 		authorized = isAdmin(player),
 		weather = environment.weather,
@@ -31,7 +33,7 @@ local function snapshot(player: Player): {[string]: any}
 		forcedWeather = environment.forcedWeather,
 		forcedClockTime = environment.forcedClockTime,
 		availableWeather = EnvironmentService.availableWeather(),
-		tacoRain = WorldEventService.get("TacoRain"),
+		tacoRain = tacoRunning or WorldEventService.get("TacoRain"),
 		legacyAdminEvents = legacy,
 	}
 end
@@ -41,31 +43,32 @@ local function push(player: Player)
 end
 
 local function setTacos(mode: string): boolean
-	local legacyAvailable = LegacyAdminEventService.available("RainingTacos")
-	local enabled: boolean?
-	if legacyAvailable then
+	if LegacyAdminEventService.available("RainingTacos") then
+		-- The real Admin V5 event owns presentation when available; make sure the
+		-- repo fallback is off so players never see two taco systems at once.
+		WorldEventService.set("TacoRain", false)
 		if mode == "on" or mode == "true" or mode == "1" then
-			enabled = LegacyAdminEventService.run("RainingTacos") and true or nil
+			return LegacyAdminEventService.run("RainingTacos")
 		elseif mode == "off" or mode == "false" or mode == "0" then
 			LegacyAdminEventService.stop("RainingTacos")
-			enabled = false
+			return true
 		elseif mode == "toggle" then
-			enabled = LegacyAdminEventService.toggle("RainingTacos")
+			return LegacyAdminEventService.toggle("RainingTacos") ~= nil
 		end
-	else
-		-- Safe fallback only when the real Admin V5 event package cannot be found.
-		if mode == "on" or mode == "true" or mode == "1" then
-			enabled = WorldEventService.set("TacoRain", true) and true or nil
-		elseif mode == "off" or mode == "false" or mode == "0" then
-			WorldEventService.set("TacoRain", false)
-			enabled = false
-		elseif mode == "toggle" then
-			enabled = WorldEventService.toggle("TacoRain")
-		end
+		return false
 	end
-	if enabled == nil then return false end
-	WorldEventService.set("TacoRain", enabled)
-	return true
+
+	-- Fallback only exists for a clean checkout / Studio place where Admin V5
+	-- has not been imported yet.
+	if mode == "on" or mode == "true" or mode == "1" then
+		return WorldEventService.set("TacoRain", true)
+	elseif mode == "off" or mode == "false" or mode == "0" then
+		WorldEventService.set("TacoRain", false)
+		return true
+	elseif mode == "toggle" then
+		return WorldEventService.toggle("TacoRain") ~= nil
+	end
+	return false
 end
 
 local function handle(player: Player, payload: any)
