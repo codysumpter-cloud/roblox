@@ -24,6 +24,7 @@ local scheduled = false
 local roundToken = 0
 local lastIntent = {}
 local startedAt = 0
+local assemblingRound = false
 local COUCH_CENTER = Vector3.new(0, 4.8, -28)
 local roundCouchCenter = COUCH_CENTER
 local COUCH_HALF_X = 9.5
@@ -86,6 +87,26 @@ local function removeFromQueue(player: Player)
 	for index, queued in queue do
 		if queued == player then table.remove(queue, index) break end
 	end
+end
+
+local function cancelRound(token: number, message: string)
+	if token ~= roundToken then return end
+	assemblingRound = false
+	for _, userId in state.players do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			if PetService.isInParty(player) then
+				AvatarAdapter.exitParty(player)
+				PetService.spawnActive(player)
+			end
+			notify(player, message)
+		end
+	end
+	state = RoundRules.newState()
+	inputs = {}
+	grabbed = {}
+	carriedBy = {}
+	publish()
 end
 
 local function finishRound(token: number)
@@ -167,7 +188,9 @@ local function eliminate(userId: number)
 		if model then model:SetAttribute("Eliminated", true) end
 		notify(player, "Flop! You are out this round.")
 	end
-	if #RoundRules.remaining(state) <= 1 then finishRound(roundToken) end
+	if state.phase == RoundRules.Phase.Playing and not assemblingRound and #RoundRules.remaining(state) <= 1 then
+		finishRound(roundToken)
+	end
 end
 
 local function nearestTarget(player: Player, radius: number): (Player?, BasePart?)
@@ -289,20 +312,43 @@ local function startRound()
 		task.wait(1)
 	end
 	if token ~= roundToken then return end
+	if #RoundRules.remaining(state) < mode.minPlayers then
+		cancelRound(token, "Couch round cancelled: not enough players remained.")
+		return
+	end
 	state.phase = RoundRules.Phase.Playing
 	startedAt = os.clock()
 	roundCouchCenter = findCouchCenter()
 	local slot = 0
+	assemblingRound = true
 	for _, userId in state.players do
 		local player = Players:GetPlayerByUserId(userId)
 		if player and PlayerProfileService.get(player) and AvatarAdapter.enterParty(player) then
-			slot += 1
-			PetService.enterParty(player, roundCouchCenter + Vector3.new((slot - 1) * 2 - 4, 0, 0))
+			local nextSlot = slot + 1
+			local petModel = PetService.enterParty(
+				player,
+				roundCouchCenter + Vector3.new((nextSlot - 1) * 2 - 4, 0, 0)
+			)
+			if petModel then
+				slot = nextSlot
+			else
+				AvatarAdapter.exitParty(player)
+				eliminate(userId)
+			end
 		else
 			eliminate(userId)
 		end
 	end
+	assemblingRound = false
+	if #RoundRules.remaining(state) < mode.minPlayers then
+		cancelRound(token, "Couch round cancelled: not enough players could enter.")
+		return
+	end
 	publish(mode.roundSeconds)
+end
+
+function PartyService.refreshAvatar(player: Player)
+	if inRound(player) then AvatarAdapter.enterParty(player) end
 end
 
 local function joinQueue(player: Player)

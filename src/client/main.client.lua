@@ -136,7 +136,8 @@ RoundUpdated.OnClientEvent:Connect(function(payload)
 	partyActive = included and (payload.phase == "Playing" or payload.phase == "Countdown")
 	if partyActive then
 		task.defer(function()
-			local model = workspace:FindFirstChild(player.Name .. "_PartyBuddy")
+			local buddies = workspace:FindFirstChild("PocketBuddies")
+			local model = buddies and buddies:FindFirstChild(player.Name .. "_PartyBuddy")
 			local root = model and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true))
 			if root and root:IsA("BasePart") then
 				workspace.CurrentCamera.CameraSubject = root

@@ -51,7 +51,9 @@ local function added(player: Player)
 		task.wait(0.25)
 		-- A party round owns the pet runtime. Avatar respawns must not replace the
 		-- physical party pet or return the player to hub-companion mode mid-round.
-		if not PartyService.isInParty(player) then
+		if PartyService.isInParty(player) then
+			PartyService.refreshAvatar(player)
+		else
 			PetService.refresh(player)
 		end
 	end)

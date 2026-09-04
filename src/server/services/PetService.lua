@@ -6,8 +6,9 @@ local PlayerProfileService = require(script.Parent.PlayerProfileService)
 local RemoteService = require(script.Parent.RemoteService)
 
 local PetService = {}
-local runtime = {}
-local partyMode = {}
+local runtime: {[Player]: Model} = {}
+local partyMode: {[Player]: boolean} = {}
+local generation: {[Player]: number} = {}
 local folder = workspace:FindFirstChild("PocketBuddies") or Instance.new("Folder")
 folder.Name = "PocketBuddies"
 folder.Parent = workspace
@@ -35,14 +36,18 @@ local function snapshot(player: Player)
 end
 
 function PetService.spawnActive(player: Player)
+	generation[player] = (generation[player] or 0) + 1
+	local token = generation[player]
 	local profile = PlayerProfileService.get(player)
 	local pet = profile and SaveSchema.activePet(profile)
 	if not pet then return end
 
-	if runtime[player] then
-		runtime[player]:Destroy()
-	end
 	local model = select(1, PetRuntimeAdapter.build(pet))
+	if generation[player] ~= token or player.Parent == nil then
+		model:Destroy()
+		return
+	end
+	if runtime[player] then runtime[player]:Destroy() end
 	PetRuntimeAdapter.prepare(model)
 	model.Name = player.Name .. "_Buddy"
 	model:SetAttribute("OwnerUserId", player.UserId)
@@ -61,13 +66,18 @@ function PetService.spawnActive(player: Player)
 end
 
 function PetService.enterParty(player: Player, position: Vector3)
+	generation[player] = (generation[player] or 0) + 1
+	local token = generation[player]
 	local profile = PlayerProfileService.get(player)
 	local pet = profile and SaveSchema.activePet(profile)
 	if not pet then return nil end
-	if runtime[player] then
-		runtime[player]:Destroy()
-	end
 	local model = select(1, PetRuntimeAdapter.build(pet))
+	if generation[player] ~= token or player.Parent == nil then
+		model:Destroy()
+		return nil
+	end
+	if runtime[player] then runtime[player]:Destroy() end
+	PetRuntimeAdapter.prepare(model)
 	model.Name = player.Name .. "_PartyBuddy"
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model:SetAttribute("PartyPet", true)
@@ -98,11 +108,13 @@ function PetService.pushProfile(player: Player)
 end
 
 function PetService.remove(player: Player)
+	generation[player] = (generation[player] or 0) + 1
 	if runtime[player] then
 		runtime[player]:Destroy()
 	end
 	runtime[player] = nil
 	partyMode[player] = nil
+	generation[player] = nil
 end
 
 RunService.Heartbeat:Connect(function(dt)

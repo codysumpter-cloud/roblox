@@ -1,16 +1,22 @@
 --!strict
 local AvatarAdapter = {}
-local saved = {}
+local saved: {[Player]: any} = {}
+type Fadeable = BasePart | Decal
 
-function AvatarAdapter.setCharacterVisible(character: Model, visible: boolean)
+local function hideCharacter(character: Model): {[Fadeable]: number}
+	local transparencies: {[Fadeable]: number} = {}
 	for _, descendant in character:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			if descendant.Name ~= "HumanoidRootPart" then
-				descendant.Transparency = visible and 0 or 1
-			end
-		elseif descendant:IsA("Decal") then
-			descendant.Transparency = visible and 0 or 1
+		if descendant:IsA("BasePart") or descendant:IsA("Decal") then
+			transparencies[descendant] = descendant.Transparency
+			descendant.Transparency = 1
 		end
+	end
+	return transparencies
+end
+
+local function restoreCharacter(transparencies: {[Fadeable]: number})
+	for instance, transparency in transparencies do
+		if instance.Parent then instance.Transparency = transparency end
 	end
 end
 
@@ -19,15 +25,20 @@ function AvatarAdapter.enterParty(player: Player)
 	if not character then return false end
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return false end
+	local existing = saved[player]
+	if existing and existing.character == character then return true end
 	saved[player] = {
+		character = character,
 		walkSpeed = humanoid.WalkSpeed,
 		jumpPower = humanoid.JumpPower,
+		jumpHeight = humanoid.JumpHeight,
 		autoRotate = humanoid.AutoRotate,
+		transparencies = hideCharacter(character),
 	}
 	humanoid.WalkSpeed = 0
 	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
 	humanoid.AutoRotate = false
-	AvatarAdapter.setCharacterVisible(character, false)
 	return true
 end
 
@@ -36,12 +47,15 @@ function AvatarAdapter.exitParty(player: Player)
 	local values = saved[player]
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.WalkSpeed = values and values.walkSpeed or 16
-			humanoid.JumpPower = values and values.jumpPower or 50
-			humanoid.AutoRotate = values == nil or values.autoRotate
+		if humanoid and values then
+			humanoid.WalkSpeed = values.walkSpeed
+			humanoid.JumpPower = values.jumpPower
+			humanoid.JumpHeight = values.jumpHeight
+			humanoid.AutoRotate = values.autoRotate
 		end
-		AvatarAdapter.setCharacterVisible(character, true)
+		if values and values.character == character then
+			restoreCharacter(values.transparencies)
+		end
 	end
 	saved[player] = nil
 end

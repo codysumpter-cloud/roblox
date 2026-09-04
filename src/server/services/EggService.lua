@@ -5,6 +5,7 @@ local Config = require(game.ReplicatedStorage.PocketBuddy.Shared.core.Config)
 local HatchRules = require(game.ReplicatedStorage.PocketBuddy.Shared.core.HatchRules)
 local PlayerProfileService = require(script.Parent.PlayerProfileService)
 local PetService = require(script.Parent.PetService)
+local PartyService = require(script.Parent.PartyService)
 local RemoteService = require(script.Parent.RemoteService)
 local IdAdapter = require(script.Parent.Parent.adapters.IdAdapter)
 
@@ -55,6 +56,10 @@ end
 
 local function hatch(player: Player, station: Instance)
 	if not playerNear(player, station) or rateLimited(player, "hatch") then return end
+	if PartyService.isInParty(player) then
+		RemoteService.Notify:FireClient(player, "Finish the couch round before hatching.")
+		return
+	end
 	local profile = PlayerProfileService.get(player)
 	if not profile or #profile.pets >= Config.MaxPets then return end
 
