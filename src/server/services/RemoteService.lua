@@ -9,6 +9,7 @@ root.Parent = ReplicatedStorage
 local function remote(name: string): RemoteEvent
 	local existing = root:FindFirstChild(name)
 	if existing and existing:IsA("RemoteEvent") then return existing end
+	if existing then existing:Destroy() end
 	local value = Instance.new("RemoteEvent")
 	value.Name = name
 	value.Parent = root
@@ -25,6 +26,11 @@ RemoteService.RoundUpdated = remote("RoundUpdated")
 -- Presentation-only messages emitted after the server has accepted gameplay.
 -- The client never sends VFX requests and cannot use this channel to mutate state.
 RemoteService.VFX = remote("VFX")
+-- Admin commands are still client intents. AdminService validates creator/group-owner
+-- authorization and command-specific values on the server before mutating anything.
+RemoteService.AdminCommand = remote("AdminCommand")
+RemoteService.AdminStateRequest = remote("AdminStateRequest")
+RemoteService.AdminState = remote("AdminState")
 
 local lastIntent = {}
 function RemoteService.rateLimit(player: Player, action: string, interval: number): boolean
