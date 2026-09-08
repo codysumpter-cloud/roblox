@@ -1,7 +1,8 @@
 --!strict
 return {
 	SchemaVersion = 1,
-	BuildDemoWorld = true,
+	BuildDemoWorld = false,
+	BuildCombatGraybox = true,
 	-- Published private Studio tests can opt into DataStore access. If API access is
 	-- disabled, the adapter falls back to a session profile and refuses to overwrite it.
 	PersistInStudio = true,
