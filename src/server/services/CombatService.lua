@@ -22,6 +22,7 @@ type PlayerCombatState = {
 	dashReadyAt: number,
 	launcherReadyAt: number,
 	actionSerial: number,
+	bufferedLightToken: number,
 }
 
 local states: {[Player]: PlayerCombatState} = {}
@@ -40,6 +41,7 @@ local function newState(): PlayerCombatState
 		dashReadyAt = 0,
 		launcherReadyAt = 0,
 		actionSerial = 0,
+		bufferedLightToken = 0,
 	}
 end
 
@@ -77,6 +79,10 @@ local function pushState(player: Player)
 	})
 end
 
+local function invalidateBufferedLight(state: PlayerCombatState)
+	state.bufferedLightToken += 1
+end
+
 local function stun(player: Player, duration: number)
 	local state = getState(player)
 	local now = os.clock()
@@ -84,6 +90,7 @@ local function stun(player: Player, duration: number)
 	state.actionLockedUntil = math.max(state.actionLockedUntil, state.stunnedUntil)
 	state.blocking = false
 	state.actionSerial += 1
+	invalidateBufferedLight(state)
 	RemoteService.CombatEvent:FireClient(player, { type = "Stunned", duration = duration })
 	pushState(player)
 end
@@ -103,6 +110,15 @@ local function isBlockingFront(target: Player, attackerRoot: BasePart): boolean
 	return targetRoot.CFrame.LookVector:Dot(delta.Unit) > 0.12
 end
 
+local function hasLineOfSight(attackerCharacter: Model, targetCharacter: Model, attackerRoot: BasePart, targetRoot: BasePart): boolean
+	local delta = targetRoot.Position - attackerRoot.Position
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { attackerCharacter }
+	local hit = Workspace:Raycast(attackerRoot.Position, delta, params)
+	return hit == nil or hit.Instance:IsDescendantOf(targetCharacter)
+end
+
 local function findVictims(attacker: Player, attack): {Player}
 	local character, _, root = getCharacterParts(attacker)
 	if not character or not root then return {} end
@@ -116,17 +132,30 @@ local function findVictims(attacker: Player, attack): {Player}
 	local center = root.CFrame * CFrame.new(0, 0, -attack.ForwardOffset)
 	local parts = Workspace:GetPartBoundsInBox(center, size, params)
 	local seen: {[Player]: boolean} = {}
-	local victims = {}
+	local candidates = {}
 
 	for _, part in parts do
 		local model = part:FindFirstAncestorOfClass("Model")
 		local target = model and Players:GetPlayerFromCharacter(model)
 		if target and target ~= attacker and not seen[target] and isAlive(target) then
-			seen[target] = true
-			table.insert(victims, target)
+			local targetCharacter, _, targetRoot = getCharacterParts(target)
+			if targetCharacter and targetRoot and hasLineOfSight(character, targetCharacter, root, targetRoot) then
+				seen[target] = true
+				local delta = targetRoot.Position - root.Position
+				local distance = delta.Magnitude
+				local forward = if distance > 0.001 then root.CFrame.LookVector:Dot(delta.Unit) else 1
+				local score = forward * 2 - distance / math.max(CombatConfig.Targeting.MaxRange, 1)
+				table.insert(candidates, { player = target, score = score })
+			end
 		end
 	end
 
+	table.sort(candidates, function(a, b) return a.score > b.score end)
+	local victims = {}
+	local maxTargets = math.max(1, attack.MaxTargets or 1)
+	for index = 1, math.min(maxTargets, #candidates) do
+		table.insert(victims, candidates[index].player)
+	end
 	return victims
 end
 
@@ -177,7 +206,8 @@ local function applyHit(attacker: Player, target: Player, attack)
 	applyImpulse(attackerRoot, targetRoot, attack)
 	stun(target, attack.Stun or 0.2)
 	if attack.Ragdoll then
-		target.Character:SetAttribute("CombatRagdollUntil", now + attack.Ragdoll)
+		local targetCharacter = target.Character
+		if targetCharacter then targetCharacter:SetAttribute("CombatRagdollUntil", now + attack.Ragdoll) end
 	end
 
 	RemoteService.CombatEvent:FireClient(attacker, {
@@ -193,26 +223,49 @@ local function applyHit(attacker: Player, target: Player, attack)
 	})
 end
 
-local function lightAttack(player: Player)
+local function performLightAttack(player: Player)
 	if not canAct(player) then return end
 	local state = getState(player)
+	invalidateBufferedLight(state)
 	local now = os.clock()
 	local combo = CombatConfig.LightCombo
 	local index = ComboRules.nextIndex(state.comboIndex, now - state.lastAttackAt, #combo, CombatConfig.ComboResetSeconds)
 	local attack = combo[index]
 	state.comboIndex = index
 	state.lastAttackAt = now
-	state.actionLockedUntil = now + (attack.Recovery or 0.24)
+	state.actionLockedUntil = now + attack.Recovery
 	state.actionSerial += 1
 	local serial = state.actionSerial
 	pushState(player)
 	RemoteService.CombatEvent:FireAllClients({ type = "AttackStarted", attacker = player.UserId, move = "Light", comboIndex = index })
 
-	task.delay(attack.Startup or 0.10, function()
+	task.delay(attack.Startup, function()
 		local current = states[player]
 		if not current or current.actionSerial ~= serial or not isAlive(player) or os.clock() < current.stunnedUntil then return end
 		for _, target in findVictims(player, attack) do
 			applyHit(player, target, attack)
+		end
+	end)
+end
+
+local function lightAttack(player: Player)
+	if not isAlive(player) then return end
+	local state = getState(player)
+	local now = os.clock()
+	if state.blocking or now < state.stunnedUntil then return end
+	if now >= state.actionLockedUntil then
+		performLightAttack(player)
+		return
+	end
+
+	local remaining = state.actionLockedUntil - now
+	if remaining > CombatConfig.InputBufferSeconds then return end
+	invalidateBufferedLight(state)
+	local token = state.bufferedLightToken
+	task.delay(remaining, function()
+		local current = states[player]
+		if current and current.bufferedLightToken == token and not current.blocking and os.clock() >= current.stunnedUntil then
+			performLightAttack(player)
 		end
 	end)
 end
@@ -222,14 +275,15 @@ local function launcher(player: Player)
 	local state = getState(player)
 	local now = os.clock()
 	if now < state.launcherReadyAt then return end
+	invalidateBufferedLight(state)
 	state.launcherReadyAt = now + CombatConfig.LauncherCooldown
-	state.actionLockedUntil = now + 0.46
+	state.actionLockedUntil = now + CombatConfig.Launcher.Recovery
 	state.comboIndex = 0
 	state.actionSerial += 1
 	local serial = state.actionSerial
 	RemoteService.CombatEvent:FireAllClients({ type = "AttackStarted", attacker = player.UserId, move = "Launcher" })
 
-	task.delay(0.16, function()
+	task.delay(CombatConfig.Launcher.Startup, function()
 		local current = states[player]
 		if not current or current.actionSerial ~= serial or not isAlive(player) or os.clock() < current.stunnedUntil then return end
 		for _, target in findVictims(player, CombatConfig.Launcher) do
@@ -251,6 +305,7 @@ local function dash(player: Player, payload)
 	direction = Vector3.new(direction.X, 0, direction.Z)
 	if direction.Magnitude < 0.1 then direction = root.CFrame.LookVector else direction = direction.Unit end
 
+	invalidateBufferedLight(state)
 	state.dashReadyAt = now + CombatConfig.DashCooldown
 	state.actionLockedUntil = now + 0.12
 	state.actionSerial += 1
@@ -263,6 +318,7 @@ local function setBlocking(player: Player, enabled: boolean)
 	local now = os.clock()
 	if enabled then
 		if not isAlive(player) or now < state.stunnedUntil or now < state.actionLockedUntil then return end
+		invalidateBufferedLight(state)
 		state.blocking = true
 		state.blockStartedAt = now
 		state.comboIndex = 0
@@ -290,24 +346,24 @@ local function onIntent(player: Player, payload)
 	end
 end
 
+local function bindPlayer(player: Player)
+	states[player] = newState()
+	player.CharacterAdded:Connect(function()
+		states[player] = newState()
+		task.defer(pushState, player)
+	end)
+	if player.Character then task.defer(pushState, player) end
+end
+
 function CombatService.start()
 	if started then return end
 	started = true
 	RemoteService.CombatIntent.OnServerEvent:Connect(onIntent)
-
-	Players.PlayerAdded:Connect(function(player)
-		states[player] = newState()
-		player.CharacterAdded:Connect(function()
-			states[player] = newState()
-			task.defer(pushState, player)
-		end)
-	end)
+	Players.PlayerAdded:Connect(bindPlayer)
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
 	end)
-	for _, player in Players:GetPlayers() do
-		states[player] = newState()
-	end
+	for _, player in Players:GetPlayers() do bindPlayer(player) end
 
 	RunService.Heartbeat:Connect(function(dt)
 		local now = os.clock()
