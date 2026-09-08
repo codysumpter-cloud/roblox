@@ -2,10 +2,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local CombatConfig = require(ReplicatedStorage.PocketBuddy.Shared.core.combat.CombatConfig)
 local ComboRules = require(ReplicatedStorage.PocketBuddy.Shared.core.combat.ComboRules)
+local HitboxService = require(script.Parent.HitboxService)
 local RemoteService = require(script.Parent.RemoteService)
 
 local CombatService = {}
@@ -110,55 +110,6 @@ local function isBlockingFront(target: Player, attackerRoot: BasePart): boolean
 	return targetRoot.CFrame.LookVector:Dot(delta.Unit) > 0.12
 end
 
-local function hasLineOfSight(attackerCharacter: Model, targetCharacter: Model, attackerRoot: BasePart, targetRoot: BasePart): boolean
-	local delta = targetRoot.Position - attackerRoot.Position
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { attackerCharacter }
-	local hit = Workspace:Raycast(attackerRoot.Position, delta, params)
-	return hit == nil or hit.Instance:IsDescendantOf(targetCharacter)
-end
-
-local function findVictims(attacker: Player, attack): {Player}
-	local character, _, root = getCharacterParts(attacker)
-	if not character or not root then return {} end
-
-	local params = OverlapParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character }
-	params.MaxParts = 64
-
-	local size = Vector3.new(attack.Width, attack.Height, attack.Depth)
-	local center = root.CFrame * CFrame.new(0, 0, -attack.ForwardOffset)
-	local parts = Workspace:GetPartBoundsInBox(center, size, params)
-	local seen: {[Player]: boolean} = {}
-	local candidates = {}
-
-	for _, part in parts do
-		local model = part:FindFirstAncestorOfClass("Model")
-		local target = model and Players:GetPlayerFromCharacter(model)
-		if target and target ~= attacker and not seen[target] and isAlive(target) then
-			local targetCharacter, _, targetRoot = getCharacterParts(target)
-			if targetCharacter and targetRoot and hasLineOfSight(character, targetCharacter, root, targetRoot) then
-				seen[target] = true
-				local delta = targetRoot.Position - root.Position
-				local distance = delta.Magnitude
-				local forward = if distance > 0.001 then root.CFrame.LookVector:Dot(delta.Unit) else 1
-				local score = forward * 2 - distance / math.max(CombatConfig.Targeting.MaxRange, 1)
-				table.insert(candidates, { player = target, score = score })
-			end
-		end
-	end
-
-	table.sort(candidates, function(a, b) return a.score > b.score end)
-	local victims = {}
-	local maxTargets = math.max(1, attack.MaxTargets or 1)
-	for index = 1, math.min(maxTargets, #candidates) do
-		table.insert(victims, candidates[index].player)
-	end
-	return victims
-end
-
 local function applyImpulse(attackerRoot: BasePart, targetRoot: BasePart, attack)
 	local horizontal = targetRoot.Position - attackerRoot.Position
 	horizontal = Vector3.new(horizontal.X, 0, horizontal.Z)
@@ -242,7 +193,7 @@ local function performLightAttack(player: Player)
 	task.delay(attack.Startup, function()
 		local current = states[player]
 		if not current or current.actionSerial ~= serial or not isAlive(player) or os.clock() < current.stunnedUntil then return end
-		for _, target in findVictims(player, attack) do
+		for _, target in HitboxService.findPlayerTargets(player, attack, CombatConfig.Targeting.MaxRange) do
 			applyHit(player, target, attack)
 		end
 	end)
@@ -286,7 +237,7 @@ local function launcher(player: Player)
 	task.delay(CombatConfig.Launcher.Startup, function()
 		local current = states[player]
 		if not current or current.actionSerial ~= serial or not isAlive(player) or os.clock() < current.stunnedUntil then return end
-		for _, target in findVictims(player, CombatConfig.Launcher) do
+		for _, target in HitboxService.findPlayerTargets(player, CombatConfig.Launcher, CombatConfig.Targeting.MaxRange) do
 			applyHit(player, target, CombatConfig.Launcher)
 		end
 	end)
