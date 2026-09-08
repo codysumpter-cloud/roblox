@@ -23,6 +23,10 @@ RemoteService.Notify = remote("Notify")
 -- the action, current phase, ownership, proximity, and this per-player cooldown.
 RemoteService.Intent = remote("Intent")
 RemoteService.RoundUpdated = remote("RoundUpdated")
+-- PvP follows the same trust boundary: the client requests an action, while the
+-- server chooses victims, damage, guard outcomes, stun, and physics impulses.
+RemoteService.CombatIntent = remote("CombatIntent")
+RemoteService.CombatEvent = remote("CombatEvent")
 -- Presentation-only messages emitted after the server has accepted gameplay.
 -- The client never sends VFX requests and cannot use this channel to mutate state.
 RemoteService.VFX = remote("VFX")
