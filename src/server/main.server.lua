@@ -20,6 +20,7 @@ local StudioAssetBridge = require(script.Parent.assets.StudioAssetBridge)
 local StudioPackageInventory = require(script.Parent.assets.StudioPackageInventory)
 local RuntimeThreatProbe = require(script.Parent.assets.RuntimeThreatProbe)
 local DemoWorldBuilder = require(script.Parent.world.DemoWorldBuilder)
+local CombatGrayboxBuilder = require(script.Parent.world.CombatGrayboxBuilder)
 local WorldAssetService = require(script.Parent.world.WorldAssetService)
 local WorldHabitatService = require(script.Parent.world.WorldHabitatService)
 local EnvironmentService = require(script.Parent.environment.EnvironmentService)
@@ -39,6 +40,9 @@ task.spawn(WorldAssetService.build)
 AmbientAnimalService.start()
 NativeAnimalAnimationService.start()
 CombatService.start()
+if Config.BuildCombatGraybox then
+	CombatGrayboxBuilder.build()
+end
 if Config.BuildDemoWorld then
 	DemoWorldBuilder.build()
 end
