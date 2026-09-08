@@ -19,6 +19,10 @@ local started = false
 local hardLock = false
 local currentTarget: Player? = nil
 local stunnedUntil = 0
+local stunSerial = 0
+local savedWalkSpeed: number? = nil
+local savedJumpPower: number? = nil
+local savedJumpHeight: number? = nil
 
 local highlight = Instance.new("Highlight")
 highlight.Name = "CombatTargetHighlight"
@@ -126,6 +130,39 @@ local function canLocalAct(): boolean
 	return os.clock() >= stunnedUntil
 end
 
+local function applyLocalStun(duration: number)
+	local wasAlreadyStunned = os.clock() < stunnedUntil
+	stunnedUntil = math.max(stunnedUntil, os.clock() + duration)
+	stunSerial += 1
+	local serial = stunSerial
+	local _, humanoid = characterParts(player)
+	if humanoid then
+		if not wasAlreadyStunned then
+			savedWalkSpeed = humanoid.WalkSpeed
+			savedJumpPower = humanoid.JumpPower
+			savedJumpHeight = humanoid.JumpHeight
+		end
+		humanoid.WalkSpeed = 0
+		if humanoid.UseJumpPower then humanoid.JumpPower = 0 else humanoid.JumpHeight = 0 end
+	end
+
+	task.delay(math.max(0, stunnedUntil - os.clock()), function()
+		if stunSerial ~= serial or os.clock() < stunnedUntil then return end
+		local _, currentHumanoid = characterParts(player)
+		if currentHumanoid then
+			if savedWalkSpeed then currentHumanoid.WalkSpeed = savedWalkSpeed end
+			if currentHumanoid.UseJumpPower then
+				if savedJumpPower then currentHumanoid.JumpPower = savedJumpPower end
+			else
+				if savedJumpHeight then currentHumanoid.JumpHeight = savedJumpHeight end
+			end
+		end
+		savedWalkSpeed = nil
+		savedJumpPower = nil
+		savedJumpHeight = nil
+	end)
+end
+
 local function attackAction(_name: string, inputState: Enum.UserInputState): Enum.ContextActionResult
 	if inputState ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Sink end
 	if not canLocalAct() then return Enum.ContextActionResult.Sink end
@@ -201,7 +238,7 @@ end
 local function onCombatEvent(payload)
 	if type(payload) ~= "table" or type(payload.type) ~= "string" then return end
 	if payload.type == "Stunned" and type(payload.duration) == "number" then
-		stunnedUntil = math.max(stunnedUntil, os.clock() + payload.duration)
+		applyLocalStun(payload.duration)
 	elseif payload.type == "HitConfirmed" then
 		fovKick(2.2)
 	elseif payload.type == "PerfectBlock" then
